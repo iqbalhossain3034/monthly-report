@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>মাসিক অগ্রিম কর্মসূচি</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#1b2430;
+    --paper:#f3f6fb;
+    --paper-line:#d8e0ec;
+    --green-deep:#123a5e;
+    --green-mid:#2f6690;
+    --green-soft:#e2ebf5;
+    --gold:#b5651d;
+    --gold-soft:#f6e6d6;
+    --red:#a13d3d;
+    --red-soft:#f6e3e0;
+    --shadow:0 1px 2px rgba(18,58,94,.07),0 8px 24px rgba(18,58,94,.09);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Noto Sans Bengali','Hind Siliguri','Vrinda','SolaimanLipi',system-ui,sans-serif;
+    font-size:14px;
+    line-height:1.5;
+  }
+  .app{max-width:min(1700px, 96vw);margin:0 auto;padding:20px 18px 60px;}
+
+  .letterhead{
+    display:flex;align-items:center;gap:16px;
+    background:linear-gradient(135deg,var(--green-deep),var(--green-mid));
+    color:#f4efdf;border-radius:14px;padding:18px 22px;box-shadow:var(--shadow);
+  }
+  .seal{
+    width:52px;height:52px;border-radius:50%;border:2px solid #d8c48e;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Noto Serif Bengali',serif;font-weight:700;font-size:20px;
+    color:#f4efdf;flex:0 0 auto;
+    background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.12), transparent 60%);
+  }
+  .letterhead h1{font-family:'Noto Serif Bengali',serif;font-size:19px;margin:0 0 2px;font-weight:700;letter-spacing:.2px;}
+  .letterhead p{margin:0;font-size:12.5px;opacity:.85;}
+
+  .tabs{display:flex;gap:6px;margin:18px 0 16px;flex-wrap:wrap;}
+  .tab-btn{
+    border:1px solid var(--paper-line);background:#fff;color:var(--green-deep);
+    padding:9px 16px;border-radius:999px;font-size:13.5px;cursor:pointer;font-weight:600;transition:.15s;
+  }
+  .tab-btn:hover{border-color:var(--green-mid);}
+  .tab-btn.active{background:var(--green-deep);border-color:var(--green-deep);color:#f4efdf;}
+
+  .card{background:#fff;border:1px solid var(--paper-line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:18px;}
+  .card h2{font-family:'Noto Serif Bengali',serif;font-size:16px;margin:0 0 14px;color:var(--green-deep);border-bottom:2px solid var(--green-soft);padding-bottom:8px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;}
+  label{display:block;font-size:12px;color:#5a5648;margin-bottom:4px;font-weight:600;}
+  input[type=text],input[type=number],input[type=month],input[type=date],select,textarea{
+    width:100%;padding:8px 10px;border:1px solid var(--paper-line);border-radius:8px;
+    font-family:inherit;font-size:13.5px;background:#fffdf8;color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--green-mid);outline-offset:1px;}
+  .field{margin-bottom:10px;}
+  .hint{font-size:11px;color:#8a8471;margin-top:3px;}
+  .btn{border:none;border-radius:9px;padding:9px 18px;font-weight:700;font-size:13.5px;cursor:pointer;transition:.15s;font-family:inherit;}
+  .btn-primary{background:var(--green-deep);color:#f4efdf;}
+  .btn-primary:hover{background:var(--green-mid);}
+  .btn-gold{background:var(--gold-soft);color:var(--gold);border:1px solid var(--gold);}
+  .btn-gold:hover{background:var(--gold);color:#fff;}
+  .btn-outline{background:#fff;border:1px solid var(--paper-line);color:var(--ink);}
+  .btn-outline:hover{border-color:var(--green-mid);}
+  .btn-danger{background:var(--red-soft);color:var(--red);border:1px solid var(--red);}
+  .btn-sm{padding:5px 10px;font-size:12px;border-radius:7px;}
+  .row-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{border:1px solid var(--paper-line);padding:6px 6px;text-align:center;vertical-align:middle;}
+  thead th{background:var(--green-soft);color:var(--green-deep);font-weight:700;font-size:11px;}
+  .select-col select{font-size:11.5px;width:100%;}
+  tbody tr:nth-child(even){background:#fbf9f2;}
+  tbody tr.off-day{background:#c7c7c2!important;}
+  tbody tr.off-day td{color:#3a3a36;}
+  tbody tr:focus-within{background:#cfe3da!important;box-shadow:inset 3px 0 0 var(--green-mid);}
+  tbody tr:focus-within td{color:var(--green-deep);font-weight:600;}
+  tbody tr.active-row{background:#cfe3da!important;box-shadow:inset 3px 0 0 var(--green-mid);}
+  tbody tr.active-row td{color:var(--green-deep);font-weight:600;}
+  td select, td input{font-size:12px;padding:5px 4px;min-width:64px;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;}
+  .badge.ok{background:var(--green-soft);color:var(--green-deep);}
+  .badge.pending{background:var(--gold-soft);color:var(--gold);}
+  .muted{color:#8a8471;}
+  .top-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+  .toast{
+    position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    background:var(--green-deep);color:#f4efdf;padding:10px 20px;border-radius:999px;
+    font-size:13px;font-weight:600;box-shadow:var(--shadow);opacity:0;pointer-events:none;
+    transition:opacity .25s, transform .25s;z-index:50;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+  .history-list{display:flex;flex-direction:column;gap:8px;}
+  .history-item{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--paper-line);border-radius:10px;padding:10px 14px;background:#fffdf8;}
+  .history-item strong{font-family:'Noto Serif Bengali',serif;}
+  .search-box{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end;}
+  .search-box input,.search-box select{max-width:220px;}
+  .empty{text-align:center;color:#8a8471;padding:26px 10px;font-size:13px;}
+  .setup-table td{text-align:left;}
+  .setup-table th{white-space:nowrap;}
+  .footer-note{font-size:11px;color:#8a8471;text-align:center;margin-top:28px;}
+  .select-col{background:#f1efe4;border-left:2px dashed #b8ab7e!important;}
+  thead th.select-col{background:#e9e2c9;color:#7a6f4a;}
+  .report-head{margin-bottom:14px;}
+  .report-head-title{font-family:'Noto Serif Bengali',serif;font-size:14px;line-height:1.6;text-align:center;}
+  .report-head-month{font-size:13px;display:inline-block;margin-top:4px;}
+  .report-worker{display:flex;justify-content:space-between;gap:20px;font-size:13px;margin-bottom:14px;line-height:1.8;flex-wrap:wrap;}
+  .report-note{font-size:11.5px;color:#5a5648;margin:14px 0 20px;}
+  .report-sign{font-size:13px;line-height:1.9;text-align:right;}
+  .center-table input{min-width:60px;}
+  .print-only{display:none;}
+  td input[type="text"]{width:100%;border:1px solid #d8d2bd;border-radius:5px;padding:3px 6px;font:inherit;background:#fff;}
+  @media print{
+    @page{ size:A4 portrait; margin:6mm; }
+    .tabs,.top-bar,.row-actions,.no-print,.letterhead,.footer-note{display:none!important;}
+    body{background:#fff;font-size:9px;}
+    .app{max-width:100%;padding:0;}
+    .card{box-shadow:none;border:none;padding:0;margin:0;}
+    select.no-print{display:none!important;}
+    .report-head{margin-bottom:8px;}
+    .report-head-title{font-size:12px;line-height:1.35;}
+    .report-head-month{font-size:11px;}
+    .report-worker{font-size:10.5px;margin-bottom:8px;line-height:1.5;}
+    .report-note{font-size:9px;margin:8px 0 12px;}
+    .report-sign{font-size:10.5px;line-height:1.5;}
+    table{font-size:12.5px;table-layout:fixed;width:100%;border:1px solid #000;}
+    .table-wrap{border:1.25px solid #000;padding:2px;}
+    thead th{font-size:9px;font-weight:400;line-height:1.15;padding:3px 2px;background:#e8e8e8!important;color:#000!important;}
+    th,td{padding:3px 4px;line-height:1.25;word-break:break-word;border:0.5px solid #555;vertical-align:middle;}
+    tbody tr:nth-child(even){background:#fff!important;}
+    .print-only{display:inline;white-space:normal;word-break:break-word;}
+    .muted{color:#000;font-weight:700;}
+    td input[type="text"]{border:none;}
+    /* যেকোনো "সর্বশেষ নির্বাচিত সারি" সবুজ হাইলাইট প্রিন্ট/PDF-এ কখনোই দেখানো হবে না */
+    tbody tr.active-row,tbody tr:focus-within{background:transparent!important;box-shadow:none!important;}
+    tbody tr.active-row td,tbody tr:focus-within td{color:inherit!important;font-weight:inherit!important;}
+    /* প্রতিটি ঘরের প্রকৃত ফন্ট-সাইজ/wrap (autofitCells) এবং প্রতিটি সারির উচ্চতা (stretchRowsToFillPage)
+       আগে থেকে মেপে --fit-size/--fit-wrap/--row-h কাস্টম প্রপার্টি হিসেবে বসানো থাকে; সেট করা না থাকলে যুক্তিসঙ্গত ডিফল্টে ফিরে যাবে */
+    tbody td{font-size:var(--fit-size, 12.5px);white-space:var(--fit-wrap, nowrap);}
+    tbody tr{height:var(--row-h, auto);}
+    /* কলাম-প্রস্থ এখন উপরের <colgroup>-এ নির্ধারিত (গ্রুপ-হেডারসহ সঠিকভাবে কাজ করার জন্য) */
+    tbody tr{page-break-inside:avoid;}
+    thead{display:table-header-group;}
+  }
+  /* উপরের @media print রুলের হুবহু প্রতিরূপ, কিন্তু ক্লাস হিসেবে —
+     PDF এক্সপোর্টের সময় html2canvas এই ক্লাসটা ব্যবহার করে ঠিক প্রিন্টের মতোই এক-পাতার কম্প্যাক্ট লেআউট ক্যাপচার করে */
+  .pdf-export-mode{background:#fff;font-size:9px;}
+  .pdf-export-mode .app{max-width:100%;padding:0;}
+  .pdf-export-mode .tabs,.pdf-export-mode .top-bar,.pdf-export-mode .row-actions,
+  .pdf-export-mode .no-print,.pdf-export-mode .letterhead,.pdf-export-mode .footer-note{display:none!important;}
+  .pdf-export-mode .card{box-shadow:none;border:none;padding:0;margin:0;}
+  .pdf-export-mode select.no-print{display:none!important;}
+  .pdf-export-mode .report-head{margin-bottom:8px;}
+  .pdf-export-mode .report-head-title{font-size:12px;line-height:1.35;}
+  .pdf-export-mode .report-head-month{font-size:11px;}
+  .pdf-export-mode .report-worker{font-size:10.5px;margin-bottom:8px;line-height:1.5;}
+  .pdf-export-mode .report-note{font-size:9px;margin:8px 0 12px;}
+  .pdf-export-mode .report-sign{font-size:10.5px;line-height:1.5;}
+  .pdf-export-mode table{font-size:12.5px;table-layout:fixed;width:100%;border:1px solid #000;}
+  .pdf-export-mode .table-wrap{border:1.25px solid #000;padding:2px;}
+  .pdf-export-mode thead th{font-size:9px;font-weight:400;line-height:1.15;padding:3px 2px;background:#e8e8e8!important;color:#000!important;}
+  .pdf-export-mode th,.pdf-export-mode td{padding:3px 4px;line-height:1.25;word-break:break-word;border:0.15px solid #000;vertical-align:middle;}
+  .pdf-export-mode tbody tr:nth-child(even){background:#fff!important;}
+  .pdf-export-mode tbody tr.active-row,.pdf-export-mode tbody tr:focus-within{background:transparent!important;box-shadow:none!important;}
+  .pdf-export-mode tbody tr.active-row td,.pdf-export-mode tbody tr:focus-within td{color:inherit!important;font-weight:inherit!important;}
+  .pdf-export-mode .print-only{display:inline;white-space:normal;word-break:break-word;}
+  .pdf-export-mode .muted{color:#000;font-weight:700;}
+  .pdf-export-mode td input[type="text"]{border:none;}
+  /* প্রিন্টের মতোই — autofitCells/stretchRowsToFillPage-এর হিসাব এখান থেকেই আসল ফন্ট/উচ্চতা নির্ধারণ করে */
+  .pdf-export-mode tbody td{font-size:var(--fit-size, 12.5px);white-space:var(--fit-wrap, nowrap);}
+  .pdf-export-mode tbody tr{height:var(--row-h, auto);}
+  /* কলাম-প্রস্থ এখন <colgroup>-এ নির্ধারিত */
+  @media (max-width:640px){
+    .letterhead{flex-direction:column;text-align:center;}
+    table{font-size:11px;}
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   হেল্পার
+========================================================= */
+const BN_DIGIT = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
+function bnNum(n){ return String(n).replace(/[0-9]/g, d=>BN_DIGIT[d]); }
+const BN_DAYS = ['রবি','সোম','মঙ্গল','বুধ','বৃহস্পতি','শুক্র','শনি'];
+const BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+const EN_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function reportFileBaseName(ym){
+  const [y,mm] = ym.split('-').map(Number);
+  return `Monthly report-${EN_MONTHS[mm-1]} ${y}`;
+}
+function isoDate(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
+function esc(s){ return (s===undefined||s===null)?'':String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* =========================================================
+   ডিফল্ট ছুটির তালিকা (Public Holidays / Database শিট থেকে) —
+   এখন এটা সম্পূর্ণ এডিটেবল, "ছুটির তালিকা" ট্যাব থেকে যোগ/বাদ/পরিবর্তন করা যাবে
+========================================================= */
+function defaultHolidays(){
+  const raw = [
+    ['2026-02-04','শবে বরাত'],['2026-02-21','শহীদ দিবস ও আন্তর্জাতিক মাতৃভাষা দিবস'],['2026-03-18','শবে কদর'],
+    ['2026-03-20','জুমাতুল বিদা'],['2026-03-20','ঈদুল ফিতর (ছুটি)'],['2026-03-21','ঈদুল ফিতর'],['2026-03-22','ঈদুল ফিতর (ছুটি)'],
+    ['2026-03-23','ঈদুল ফিতর (ছুটি)'],['2026-03-26','স্বাধীনতা ও জাতীয় দিবস'],['2026-04-14','বাংলা নববর্ষ'],
+    ['2026-05-01','মে দিবস'],['2026-05-01','বুদ্ধ পূর্ণিমা (বৈশাখী পূর্ণিমা)'],['2026-05-25','ঈদুল আজহার ছুটি'],
+    ['2026-05-26','ঈদুল আজহার ছুটি'],['2026-05-27','ঈদুল আজহার ছুটি'],['2026-05-28','ঈদুল আজহা'],
+    ['2026-05-29','ঈদুল আজহার ছুটি'],['2026-05-30','ঈদুল আজহার ছুটি'],['2026-06-26','আশুরা'],
+    ['2026-08-05','জুলাই অভ্যুত্থান দিবস'],['2026-08-26','ঈদে মিলাদুন্নবী (সা.)'],['2026-09-04','শুভ জন্মাষ্টমী'],
+    ['2026-10-20','দুর্গাপূজা (মহানবমী)'],['2026-10-21','দুর্গাপূজা (বিজয়া দশমী)'],['2026-12-16','বিজয় দিবস'],['2026-12-25','বড়দিন'],
+    ['2027-01-24','শবে বরাত'],['2027-02-21','শহীদ দিবস ও আন্তর্জাতিক মাতৃভাষা দিবস'],['2027-03-05','জুমাতুল বিদা'],
+    ['2027-03-06','শবে কদর'],['2027-03-09','ঈদুল ফিতর'],['2027-03-10','ঈদুল ফিতর (ছুটি)'],['2027-03-11','ঈদুল ফিতর (ছুটি)'],
+    ['2027-03-26','স্বাধীনতা ও জাতীয় দিবস'],['2027-04-14','বাংলা নববর্ষ'],['2027-05-01','মে দিবস'],
+    ['2027-05-16','ঈদুল আজহা'],['2027-05-17','ঈদুল আজহার ছুটি'],['2027-05-18','ঈদুল আজহার ছুটি'],
+    ['2027-05-20','বুদ্ধ পূর্ণিমা'],['2027-06-15','আশুরা'],['2027-08-15','ঈদে মিলাদুন্নবী (সা.)'],
+    ['2027-08-24','শুভ জন্মাষ্টমী'],['2027-10-10','বিজয়া দশমী'],['2027-12-16','বিজয় দিবস'],['2027-12-25','বড়দিন'],
+  ];
+  return raw.map(([date,name],i)=>({id:'h'+(i+1), date, name}));
+}
+
+/* =========================================================
+   ডিফল্ট কেন্দ্র তালিকা (Center details শিট, ২৪টি সারি — আপনার
+   আসল আগস্ট-২০২৬ জমাকৃত রিপোর্ট থেকে যাচাই করা তথ্য)
+========================================================= */
+function defaultCenterRows(){
+  const raw = [
+    // mouzaNo, mouzaName, villageName, houseFrom, houseTo, blockNo, ownerName, purpose, note
+    ['৩৬০','কলাগাছিয়া','হোগলাকান্দি',1,147,'ক/১','সফিকুল বারী','IPC',''],
+    ['৩৬০','কলাগাছিয়া','হোগলাকান্দি',148,247,'ক/১','সফিকুল বারী','IPC','A'],
+    ['৩৬০','মোল্লারচর','বড় মোল্লারচর',245,440,'খ/১','তোফাজ্জল হোসেন','IPC',''],
+    ['৩৬০','মোল্লারচর','বড় মোল্লারচর',241,591,'খ/১','তোফাজ্জল হোসেন','IPC','A'],
+    ['৩৫৮','কলাগাছিয়া','নগর ডৌকাদি',1,250,'গ/১','আঃ কাসেম মোল্লা','IPC',''],
+    ['৩৫৮','কলাগাছিয়া','নগর ডৌকাদি',251,475,'গ/১','আঃ কাসেম মোল্লা','IPC','A'],
+    ['৩৩০','লক্ষ্মীবাড়ি','লক্ষ্মীবাড়ি',1,150,'ঘ/১','মোস্তফা ভূঁইয়া','IPC',''],
+    ['৩৩০','লক্ষ্মীবাড়ি','লক্ষ্মীবাড়ি',151,257,'ঘ/১','মোস্তফা ভূঁইয়া','IPC','A'],
+    ['৩৬০','মোল্লারচর','ছোট মোল্লারচর',1,144,'ক/২','আঃ রহিম (ঢাকাইয়া বাড়ী)','IPC',''],
+    ['৩৬০','মোল্লারচর','ছোট মোল্লারচর',781,910,'ক/২','আঃ রহিম (ঢাকাইয়া বাড়ী)','IPC','A'],
+    ['৩৩১','কলাগাছিয়া','উত্তর কলাগাছিয়া',278,477,'খ/২','স্বাস্থ্য ও পঃ পঃ কেন্দ্র','IPC',''],
+    ['৩৩১','কলাগাছিয়া','উত্তর কলাগাছিয়া',478,685,'খ/২','স্বাস্থ্য ও পঃ পঃ কেন্দ্র','IPC','A'],
+    ['৩৩১','কলাগাছিয়া','ভিটি কলাগাছিয়া',1,175,'গ/২','আনোয়ারুল ইসলাম','IPC',''],
+    ['৩৩১','কলাগাছিয়া','ভিটি কলাগাছিয়া',176,276,'গ/২','আনোয়ারুল ইসলাম','IPC','A'],
+    ['৩৩০','লক্ষ্মীবাড়ি','লক্ষ্মীবাড়ি',260,359,'ঘ/২','আঃ বারেক ভূঁইয়া','IPC',''],
+    ['৩৩০','লক্ষ্মীবাড়ি','লক্ষ্মীবাড়ি',360,463,'ঘ/২','আঃ বারেক ভূঁইয়া','IPC','A'],
+    ['৩৩১','কলাগাছিয়া','হোগলাকান্দি',681,918,'ক/১','সফিকুল বারী','EPI',''],
+    ['৩৬০','মোল্লারচর','বড় মোল্লারচর',248,591,'খ/১','তোফাজ্জল হোসেন','EPI',''],
+    ['৩৫৮','নগর ডৌকাদি','নগর ডৌকাদি',1,475,'গ/১','আঃ কাসেম মোল্লা','EPI',''],
+    ['৩৩০','লক্ষ্মীবাড়ি','লক্ষ্মীবাড়ি',1,259,'ঘ/১','মোস্তফা ভূঁইয়া','EPI',''],
+    ['৩৬০','মোল্লারচর','ছোট মোল্লারচর',1,247,'ক/২','আঃ রহিম (ঢাকাইয়া বাড়ী)','EPI',''],
+    ['৩৩১','কলাগাছিয়া','উত্তর কলাগাছিয়া',278,685,'খ/২','স্বাস্থ্য ও পঃ পঃ কেন্দ্র','EPI',''],
+    ['৩৩১','কলাগাছিয়া','ভিটি কলাগাছিয়া',1,277,'গ/২','আনোয়ারুল ইসলাম','EPI',''],
+    ['৩৩০','লক্ষ্মীবাড়ি','লক্ষ্মীবাড়ি',258,460,'ঘ/২','আঃ বারেক ভূঁইয়া','EPI',''],
+  ];
+  return raw.map(([mouzaNo,mouzaName,villageName,houseFrom,houseTo,blockNo,ownerName,purpose,note],i)=>(
+    {id:'c'+(i+1), mouzaNo, mouzaName, villageName, houseFrom, houseTo, newC:0, cancelC:0, blockNo, ownerName, purpose, note}
+  ));
+}
+
+const DATA_VERSION = 5;
+
+function defaultState(){
+  return {
+    version: DATA_VERSION,
+    worker:{
+      name:'মোঃ শিমুল মিয়া', designation:'স্বাস্থ্য সহকারী', mobile:'০১৮২১২৯৯৯৯৩',
+      upazila:'আড়াইহাজার', district:'নারায়ণগঞ্জ', union:'সদাসদী', wardNo:'০১'
+    },
+    auth:{
+      admin:{ username:'Iqbal', password:'1722', email:'iqbal.hossain@3034.com' },
+      user:{ username:'Shimul', password:'1722', email:'shimulmai1722@gmail.com' }
+    },
+    centerRows: defaultCenterRows(),
+    holidays: defaultHolidays(),
+    entries:{},      // { 'YYYY-MM': {category, rows:[{date,code,remark}]} }
+    submitted:{},    // { 'YYYY-MM': isoTimestamp }
+    nextRowId: 25,
+    nextHolidayId: 49
+  };
+}
+
+function parseRange(s){
+  const m = String(s||'').match(/(\d+)\s*-\s*(\d+)/);
+  if(!m) return {from:0,to:0};
+  return {from:parseInt(m[1]), to:parseInt(m[2])};
+}
+
+// পুরনো সংস্করণের ব্রাউজার-ডেটা (v1/v2, যেখানে কেন্দ্র তালিকা ও ছুটি এডিট করা যেত না)
+// থাকলে সেটাকে নতুন কাঠামোতে (v3, সম্পূর্ণ এডিটেবল) রূপান্তর করে — এন্ট্রি/ইতিহাস অক্ষুণ্ণ থাকে
+function migrateState(state){
+  if(state.version === DATA_VERSION) return state;
+  if(!state.worker) state.worker = defaultState().worker;
+  if(!state.worker.union) state.worker.union = 'সদাসদী';
+
+  if(!state.centerRows){
+    if(state.blocks && state.blocks.length){
+      let rows = []; let id=1;
+      state.blocks.forEach(b=>{
+        const r1=parseRange(b.ipc1), r2=parseRange(b.ipc2), r3=parseRange(b.epi);
+        rows.push({id:'c'+(id++), mouzaNo:b.mouzaNo, mouzaName:b.mouzaName, villageName:b.villageName, houseFrom:r1.from, houseTo:r1.to, newC:0, cancelC:0, blockNo:b.code, ownerName:b.ownerName, purpose:'IPC', note:''});
+        rows.push({id:'c'+(id++), mouzaNo:b.mouzaNo, mouzaName:b.mouzaName, villageName:b.villageName, houseFrom:r2.from, houseTo:r2.to, newC:0, cancelC:0, blockNo:b.code, ownerName:b.ownerName, purpose:'IPC', note:'A'});
+        rows.push({id:'c'+(id++), mouzaNo:b.mouzaNo, mouzaName:b.mouzaName, villageName:b.villageName, houseFrom:r3.from, houseTo:r3.to, newC:0, cancelC:0, blockNo:b.code, ownerName:b.ownerName, purpose:'EPI', note:''});
+      });
+      state.centerRows = rows;
+      state.nextRowId = id;
+      delete state.blocks;
+    } else {
+      state.centerRows = defaultCenterRows();
+      state.nextRowId = 25;
+    }
+  }
+  if(!state.holidays){
+    state.holidays = defaultHolidays();
+    state.nextHolidayId = 49;
+  }
+  if(!state.auth || !state.auth.admin){
+    const old = state.auth || {};
+    state.auth = {
+      admin:{ username:'Iqbal', password:'1722', email: old.adminEmail || 'iqbal.hossain@3034.com' },
+      user:{ username: old.username || 'Shimul', password: old.password || '1722', email: old.userEmail || 'shimulmai1722@gmail.com' }
+    };
+  }
+  if(state.nextRowId===undefined) state.nextRowId = (state.centerRows.length||24)+1;
+  if(state.nextHolidayId===undefined) state.nextHolidayId = (state.holidays.length||48)+1;
+  state.version = DATA_VERSION;
+  return state;
+}
+
+let STATE = null;
+let ACTIVE_TAB = 'entry';
+let AUTHENTICATED = false;
+let CURRENT_ROLE = null; // 'admin' or 'user'
+let CURRENT_MONTH = isoDate(new Date()).slice(0,7);
+
+/* ---------------- persistence ----------------
+   localStorage ব্যবহার করা হচ্ছে (window.storage নয়), কারণ এই ফাইলটা ডাউনলোড করে
+   সাধারণ ব্রাউজারে সরাসরি খোলা হয় — window.storage শুধু Claude.ai-এর চ্যাটের
+   ভেতরে থাকা অবস্থায় কাজ করে, স্বাধীন (standalone) HTML ফাইলে করে না।
+   localStorage একই ব্রাউজার/ডিভাইসে ডেটা ধরে রাখে; ভিন্ন ব্রাউজার/ডিভাইসে
+   নিতে হলে নিচের "ব্যাকআপ ডাউনলোড/ফিরিয়ে আনুন" অপশন ব্যবহার করুন। */
+const STORAGE_KEY = 'mr_state_v1';
+async function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return migrateState(JSON.parse(raw));
+  }catch(e){ console.error('load failed', e); }
+  return defaultState();
+}
+let LAST_SAVE_ERROR = null;
+async function saveState(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
+    LAST_SAVE_ERROR = null;
+    return true;
+  }catch(e){
+    console.error('save failed', e);
+    if(e && e.name==='QuotaExceededError'){
+      LAST_SAVE_ERROR = 'ব্রাউজারের সংরক্ষণ জায়গা পূর্ণ হয়ে গেছে (QuotaExceededError) — পুরনো ব্যাকআপ ডাউনলোড করে কিছু ডেটা মুছে ফেলুন';
+    } else {
+      LAST_SAVE_ERROR = (e && e.message) ? e.message : 'অজানা ত্রুটি';
+    }
+    return false;
+  }
+}
+function toast(msg, ms){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove('show'), ms||2200);
+}
+function holidayMap(){
+  const m = {};
+  STATE.holidays.forEach(h=>{ if(h.date && !m[h.date]) m[h.date]=h.name; });
+  return m;
+}
+
+/* ---------------- কেন্দ্র লুকআপ ---------------- */
+function centerLabel(r){
+  return `${r.blockNo||''}${r.note?(' '+r.note):''} ${r.purpose||''}`.replace(/\s+/g,' ').trim();
+}
+function categoryList(){
+  const set = new Set();
+  STATE.centerRows.forEach(r=>{ if(r.purpose) set.add(r.purpose); });
+  set.add('IPC'); set.add('EPI');
+  const list = [...set].filter(p=>p!=='সি সি সেবা').sort((a,b)=> (a==='IPC'?-2:a==='EPI'?-1:0) - (b==='IPC'?-2:b==='EPI'?-1:0) || a.localeCompare(b));
+  list.push('সি সি সেবা');
+  return list;
+}
+function optionsForCategory(cat){
+  if(cat==='সি সি সেবা') return ['সি সি সেবা','----'];
+  const opts = STATE.centerRows.filter(r=>r.purpose===cat).map(centerLabel);
+  opts.push('----');
+  return opts;
+}
+function lookupByCode(code){
+  if(!code || code==='----' || code==='সি সি সেবা') return null;
+  const row = STATE.centerRows.find(r=>centerLabel(r)===code);
+  if(!row) return null;
+  const total = (Number(row.houseTo||0)-Number(row.houseFrom||0)+1) + Number(row.newC||0) - Number(row.cancelC||0);
+  return {row, total};
+}
+
+/* ---------------- মাসের সারি তৈরি ---------------- */
+function buildMonthRows(ym, category){
+  const [y,m] = ym.split('-').map(Number);
+  const n = daysInMonth(y, m-1);
+  const rows = [];
+  for(let d=1; d<=n; d++){
+    const iso = isoDate(new Date(y, m-1, d));
+    rows.push({date:iso, code:'', remark:''});
+  }
+  return {category: category||'IPC', rows};
+}
+function getMonthEntry(ym){
+  if(!STATE.entries[ym]) STATE.entries[ym] = buildMonthRows(ym, 'IPC');
+  return STATE.entries[ym];
+}
+
+/* ================= লগইন ================= */
+let SHOW_FORGOT = false;
+function renderLogin(err){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="letterhead">
+      <div class="seal">উ.স্বা</div>
+      <div>
+        <h1>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার — উপজেলা স্বাস্থ্য ও পরিবার পরিকল্পনা কর্মকর্তার কার্যালয়</h1>
+        <p>মাঠকর্মীদের মাসিক অগ্রিম কর্মসূচি (ওয়েব সংস্করণ)</p>
+      </div>
+    </div>
+    ${SHOW_FORGOT ? forgotPasswordHTML(err) : loginFormHTML(err)}`;
+  const el = document.getElementById('loginUser') || document.getElementById('recoveryEmail');
+  if(el) el.focus();
+}
+function loginFormHTML(err){
+  return `
+    <div class="card" style="max-width:380px;margin:40px auto 0;">
+      <h2 style="text-align:center;">লগইন করুন</h2>
+      ${err?`<div style="background:var(--red-soft);color:var(--red);padding:8px 12px;border-radius:8px;font-size:12.5px;margin-bottom:12px;text-align:center;">${esc(err)}</div>`:''}
+      <div class="field"><label>ইউজারনেম</label><input type="text" id="loginUser" autocomplete="username"></div>
+      <div class="field">
+        <label>পাসওয়ার্ড</label>
+        <div style="display:flex;gap:6px;">
+          <input type="password" id="loginPass" autocomplete="current-password" style="flex:1;" onkeydown="if(event.key==='Enter')doLogin()">
+          <button type="button" class="btn btn-outline btn-sm" onclick="togglePassVisibility()">👁</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:6px;" onclick="doLogin()">প্রবেশ করুন</button>
+      <p class="hint" style="text-align:center;margin-top:12px;cursor:pointer;color:var(--green-mid);font-weight:600;" onclick="SHOW_FORGOT=true; renderLogin();">পাসওয়ার্ড ভুলে গেছেন?</p>
+    </div>`;
+}
+function togglePassVisibility(){
+  const el = document.getElementById('loginPass');
+  el.type = el.type==='password' ? 'text' : 'password';
+}
+function forgotPasswordHTML(err){
+  return `
+    <div class="card" style="max-width:400px;margin:40px auto 0;">
+      <h2 style="text-align:center;">পাসওয়ার্ড রিসেট করুন</h2>
+      <p class="hint" style="margin-top:-6px;">নিবন্ধিত দুটি ইমেইলের একটি টাইপ করুন — অ্যাডমিন অথবা ইউজার। মিলে গেলে নতুন পাসওয়ার্ড সেট করতে পারবেন।</p>
+      <p class="hint" style="background:var(--gold-soft);color:var(--gold);padding:8px 10px;border-radius:8px;">⚠️ এই অ্যাপে কোনো সার্ভার নেই বলে সত্যিকারের ইমেইল পাঠানো সম্ভব না। শুধু আপনার নিবন্ধিত ইমেইল যাচাই করে সরাসরি রিসেট করা হয়।</p>
+      ${err?`<div style="background:var(--red-soft);color:var(--red);padding:8px 12px;border-radius:8px;font-size:12.5px;margin-bottom:8px;text-align:center;">${esc(err)}</div>`:''}
+      <div class="field"><label>আপনার ইমেইল</label><input type="text" id="recoveryEmail" placeholder="নিবন্ধিত ইমেইল লিখুন"></div>
+      <div class="field"><label>নতুন পাসওয়ার্ড</label><input type="password" id="recoveryNewPass"></div>
+      <button class="btn btn-primary" style="width:100%;" onclick="doPasswordReset()">পাসওয়ার্ড রিসেট করুন</button>
+      <p class="hint" style="text-align:center;margin-top:12px;cursor:pointer;color:var(--green-mid);font-weight:600;" onclick="SHOW_FORGOT=false; renderLogin();">← লগইনে ফিরে যান</p>
+    </div>`;
+}
+function doPasswordReset(){
+  const email = document.getElementById('recoveryEmail').value.trim().toLowerCase();
+  const newPass = document.getElementById('recoveryNewPass').value;
+  let account = null;
+  if(email === STATE.auth.admin.email.toLowerCase()) account = STATE.auth.admin;
+  else if(email === STATE.auth.user.email.toLowerCase()) account = STATE.auth.user;
+  if(!account){ SHOW_FORGOT=true; renderLogin('এই ইমেইলটি নিবন্ধিত নয়'); return; }
+  if(!newPass){ SHOW_FORGOT=true; renderLogin('নতুন পাসওয়ার্ড দিন'); return; }
+  account.password = newPass;
+  saveState();
+  SHOW_FORGOT = false;
+  toast('পাসওয়ার্ড রিসেট হয়েছে, এখন লগইন করুন');
+  renderLogin();
+}
+function doLogin(){
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if(u===STATE.auth.admin.username && p===STATE.auth.admin.password){
+    AUTHENTICATED = true; CURRENT_ROLE = 'admin';
+    render();
+  } else if(u===STATE.auth.user.username && p===STATE.auth.user.password){
+    AUTHENTICATED = true; CURRENT_ROLE = 'user';
+    render();
+  } else {
+    renderLogin('ইউজারনেম বা পাসওয়ার্ড সঠিক নয়');
+  }
+}
+function doLogout(){ AUTHENTICATED = false; CURRENT_ROLE=null; SHOW_FORGOT=false; renderLogin(); }
+
+/* ================= রেন্ডার ফ্রেমওয়ার্ক ================= */
+function render(){
+  if(!AUTHENTICATED){ renderLogin(); return; }
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="letterhead">
+      <div class="seal">উ.স্বা</div>
+      <div>
+        <h1>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার — উপজেলা স্বাস্থ্য ও পরিবার পরিকল্পনা কর্মকর্তার কার্যালয়</h1>
+        <p>${esc(STATE.worker.upazila)}, ${esc(STATE.worker.district)} &nbsp;•&nbsp; মাঠকর্মীদের মাসিক অগ্রিম কর্মসূচি (ওয়েব সংস্করণ)</p>
+      </div>
+    </div>
+    <div class="tabs no-print">
+      ${tabBtn('entry','মাসিক রিপোর্ট')}
+      ${tabBtn('setup','কর্মী ও কেন্দ্র তালিকা')}
+      ${tabBtn('holidays','ছুটির তালিকা')}
+      ${tabBtn('history','ইতিহাস ও সার্চ')}
+      <span class="tab-btn" style="margin-left:auto;background:var(--gold-soft);color:var(--gold);border-color:var(--gold);cursor:default;">
+        ${CURRENT_ROLE==='admin'?'👑 এডমিন':'👤 ইউজার'}: ${esc(CURRENT_ROLE==='admin'?STATE.auth.admin.username:STATE.auth.user.username)}
+      </span>
+      <button class="tab-btn" style="color:var(--red);" onclick="doLogout()">🔒 লগআউট</button>
+    </div>
+    <div id="tab-content"></div>
+    <div class="footer-note">ডেটা শুধু আপনার এই ব্রাউজারে সংরক্ষিত হয় — অন্য কেউ দেখতে পাবে না।</div>
+  `;
+  renderTab();
+}
+function tabBtn(id,label){ return `<button class="tab-btn ${ACTIVE_TAB===id?'active':''}" onclick="setTab('${id}')">${label}</button>`; }
+function setTab(id){ ACTIVE_TAB=id; render(); }
+function renderTab(){
+  const c = document.getElementById('tab-content');
+  if(ACTIVE_TAB==='entry') c.innerHTML = entryTabHTML();
+  else if(ACTIVE_TAB==='setup') c.innerHTML = setupTabHTML();
+  else if(ACTIVE_TAB==='holidays') c.innerHTML = holidaysTabHTML();
+  else c.innerHTML = historyTabHTML();
+}
+
+/* ================= এন্ট্রি ট্যাব ================= */
+function entryTabHTML(){
+  const entry = getMonthEntry(CURRENT_MONTH);
+  const [y,m] = CURRENT_MONTH.split('-').map(Number);
+  const monthLabel = BN_MONTHS[m-1] + ' ' + bnNum(y);
+  const isSubmitted = !!STATE.submitted[CURRENT_MONTH];
+  const opts = optionsForCategory(entry.category);
+  const w = STATE.worker;
+  const hMap = holidayMap();
+  const dash = '<span class="muted">----</span>';
+
+  const rowsHTML = entry.rows.map((row,idx)=>{
+    const d = new Date(row.date+'T00:00:00');
+    const dayName = BN_DAYS[d.getDay()];
+    const isFriday = d.getDay()===5;
+    const holiday = hMap[row.date];
+    const info = lookupByCode(row.code);
+    const offRow = isFriday || row.code==='----' || holiday;
+    const isActive = entry.activeIdx===idx;
+    // এই সারির আগে বাছাই করা মান যদি বর্তমান "Fill Type" ফিল্টারের লিস্টে না থাকে,
+    // তাহলেও সেটাকে লিস্টে যোগ করে রাখা হয় — যাতে Fill Type বদলালে আগের সিলেকশন হারিয়ে না যায়/না লুকায়
+    const rowOpts = (row.code && !opts.includes(row.code)) ? [row.code, ...opts] : opts;
+    return `
+    <tr class="${offRow?'off-day':''} ${isActive?'active-row':''}">
+      <td>${bnNum(d.getDate())}-${bnNum(m)}-${bnNum(y)}</td>
+      <td>${dayName}</td>
+      <td>${info?esc(info.row.mouzaNo):dash}</td>
+      <td>${info?(esc(info.row.mouzaName)||'<span class="muted">?</span>'):dash}</td>
+      <td>${info?esc(w.union):dash}</td>
+      <td>${info?esc(w.wardNo):dash}</td>
+      <td>${info?(esc(info.row.villageName)||'<span class="muted">?</span>'):dash}</td>
+      <td>${info?`${bnNum(info.row.houseFrom)}-${bnNum(info.row.houseTo)}`:dash}</td>
+      <td>${info?bnNum(info.row.newC||0):dash}</td>
+      <td>${info?bnNum(info.row.cancelC||0):dash}</td>
+      <td>${info?bnNum(info.total):dash}</td>
+      <td>${info?esc(info.row.blockNo):(row.code==='সি সি সেবা'?'—':dash)}</td>
+      <td>${info?(esc(info.row.ownerName)||'<span class="muted">?</span>'):(row.code==='সি সি সেবা'?'সি সি সেবা কেন্দ্র':dash)}</td>
+      <td>${info?esc(info.row.purpose):(row.code==='সি সি সেবা'?'সি সি সেবা':dash)}</td>
+      <td><input type="text" class="no-print" value="${esc(row.remark)}" placeholder="—" oninput="updateRow(${idx},'remark',this.value)"><span class="print-only">${row.remark?esc(row.remark):'—'}</span></td>
+      <td class="no-print select-col">
+        <select onchange="updateRow(${idx},'code',this.value)">
+          <option value="">--নির্বাচন--</option>
+          ${rowOpts.map(o=>`<option value="${esc(o)}" ${row.code===o?'selected':''}>${esc(o)}</option>`).join('')}
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const catOpts = categoryList();
+
+  return `
+  <div class="card no-print">
+    <div class="top-bar">
+      <h2 style="border:none;margin:0;">দৈনিক ভ্রমণ তালিকা — ${monthLabel}</h2>
+      <div>${isSubmitted?'<span class="badge ok">এই মাস জমা দেওয়া হয়েছে</span>':'<span class="badge pending">এখনো জমা হয়নি</span>'}</div>
+    </div>
+    <div class="grid" style="margin-bottom:14px;">
+      <div class="field">
+        <label>মাস নির্বাচন করুন</label>
+        <input type="month" value="${CURRENT_MONTH}" onchange="changeMonth(this.value)">
+      </div>
+      <div class="field">
+        <label>ভ্রমণের ধরন (Fill Type)</label>
+        <select onchange="changeCategory(this.value)">
+          ${catOpts.map(c=>`<option value="${esc(c)}" ${entry.category===c?'selected':''}>${esc(c)}</option>`).join('')}
+        </select>
+        <div class="hint">এই সিলেকশন অনুযায়ী নিচের প্রতিটি সারির ড্রপডাউন তালিকা বদলে যাবে (Center details ট্যাবের সাথে সংযুক্ত)</div>
+      </div>
+    </div>
+    <div class="row-actions" style="margin-top:0;">
+      <button class="btn btn-gold" onclick="fillRemarks()">🗓 Fill Remark (ছুটির তালিকা থেকে বসান)</button>
+      <button class="btn btn-danger" onclick="clearMonth()">🧹 Clear (সব মুছুন)</button>
+      <button class="btn btn-outline" onclick="printReport()">🖨 প্রিন্ট</button>
+      <button class="btn btn-outline" id="whatsappShareBtn" onclick="sharePDFToWhatsApp()">📤 হোয়াটসঅ্যাপে শেয়ার করুন</button>
+      <button class="btn btn-primary" onclick="submitMonth()">✅ মাসিক রিপোর্ট জমা দিন</button>
+      ${isSubmitted?'<button class="btn btn-danger" onclick="unsubmitMonth()">জমা বাতিল করুন</button>':''}
+    </div>
+    ${LAST_SAVE_ERROR?`
+    <div style="margin-top:12px;padding:10px 14px;border-radius:9px;background:var(--red-soft);border:1px solid var(--red);color:var(--red);font-size:12.5px;">
+      ⚠ শেষবার সংরক্ষণ ব্যর্থ হয়েছে। কারণ: <strong>${esc(LAST_SAVE_ERROR)}</strong><br>
+      আপনার ইন্টারনেট সংযোগ পরীক্ষা করে আবার "✅ মাসিক রিপোর্ট জমা দিন" বাটনে চাপুন। বারবার একই সমস্যা হলে, পেজটা একবার রিফ্রেশ/পুনরায় খুলে চেষ্টা করুন — এতে ডেটা মুছে যাবে না।
+    </div>`:''}
+  </div>
+
+  <div class="card report-sheet" id="reportSheet">
+    <div class="report-head">
+      <div class="report-head-title">
+        গণপ্রজাতন্ত্রী বাংলাদেশ সরকার<br>
+        উপজেলা স্বাস্থ্য ও পঃপঃ কর্মকর্তার কার্যালয়<br>
+        ${esc(w.upazila)}, ${esc(w.district)}।<br>
+        <strong>মাঠ কর্মীদের মাসিক অগ্রিম কর্মসূচি</strong><br>
+        <span class="report-head-month">মাসের নাম: <strong>${monthLabel}</strong></span>
+      </div>
+    </div>
+    <div class="report-worker">
+      <div>
+        <div>কর্মীর নামঃ ${esc(w.name)}</div>
+        <div>পদবি: ${esc(w.designation)}</div>
+        <div>উপজেলা: ${esc(w.upazila)}।</div>
+      </div>
+      <div>
+        <div>ওয়ার্ড নং: ${esc(w.wardNo)}</div>
+        <div>ইউনিয়ন: ${esc(w.union)}</div>
+        <div>জেলা: ${esc(w.district)}।</div>
+      </div>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+    <table>
+      <colgroup>
+        <col style="width:8.5%">  <!-- তারিখ -->
+        <col style="width:6.5%">  <!-- বার -->
+        <col style="width:4.5%">  <!-- মৌজা নং -->
+        <col style="width:7.5%">  <!-- মৌজা নাম -->
+        <col style="width:6.5%">  <!-- ইউনিয়ন -->
+        <col style="width:5%">    <!-- ওয়ার্ড নং -->
+        <col style="width:8%">    <!-- গ্রামের নাম -->
+        <col style="width:8%">    <!-- হইতে-পর্যন্ত -->
+        <col style="width:4%">    <!-- নতুন -->
+        <col style="width:4%">    <!-- বিলুপ্ত -->
+        <col style="width:4%">    <!-- মোট -->
+        <col style="width:3.5%">  <!-- ব্লক নং -->
+        <col style="width:12.5%"> <!-- টিকাদান কেন্দ্রের মালিকের নাম -->
+        <col style="width:5.5%">  <!-- ভ্রমণের উদ্দেশ্য -->
+        <col style="width:12%">   <!-- মন্তব্য -->
+        <col class="no-print" style="width:9%"> <!-- নির্বাচন — প্রিন্টে সম্পূর্ণ বাদ যায় -->
+      </colgroup>
+      <thead>
+        <tr>
+          <th rowspan="2">তারিখ</th><th rowspan="2">বার</th><th colspan="2">মৌজা</th>
+          <th rowspan="2">ইউনিয়ন</th><th rowspan="2">ওয়ার্ড নং</th>
+          <th rowspan="2">গ্রামের নাম</th><th colspan="4">পরিদর্শিত বাড়ি</th>
+          <th rowspan="2">ব্লক নং</th><th rowspan="2">টিকাদান কেন্দ্রের<br>মালিকের নাম</th>
+          <th rowspan="2">ভ্রমণের উদ্দেশ্য</th><th rowspan="2">মন্তব্য</th>
+          <th rowspan="2" class="no-print select-col">নির্বাচন<br><span style="font-weight:400;font-size:9.5px;">(প্রিন্ট হবে না)</span></th>
+        </tr>
+        <tr>
+          <th>নং</th><th>নাম</th>
+          <th>হইতে-পর্যন্ত</th><th>নতুন</th><th>বিলুপ্ত</th><th>মোট</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHTML}</tbody>
+    </table>
+    </div>
+    <p class="report-note">বিঃদ্রঃ কর্তৃপক্ষের নির্দেশক্রমে কর্মসূচি পরিবর্তনশীল</p>
+    <div class="report-sign">
+      <div>দাখিলকারীর স্বাক্ষরঃ ______________________</div>
+      <div>নাম ও পদবীঃ ${esc(w.name)} ( ${esc(w.designation)} )</div>
+      <div>মোবাইলঃ ${esc(w.mobile)}</div>
+    </div>
+  </div>`;
+}
+function changeMonth(v){ CURRENT_MONTH = v; renderTab(); }
+function changeCategory(v){ getMonthEntry(CURRENT_MONTH).category = v; saveState(); renderTab(); }
+async function updateRow(idx, field, val){
+  const entry = getMonthEntry(CURRENT_MONTH);
+  entry.rows[idx][field] = val;
+  entry.activeIdx = idx;
+  SAVING_IN_PROGRESS = true;
+  await saveState();
+  SAVING_IN_PROGRESS = false;
+  renderTab();
+}
+function fillRemarks(){
+  const entry = getMonthEntry(CURRENT_MONTH);
+  const hMap = holidayMap();
+  let count=0;
+  entry.rows.forEach(row=>{
+    const d = new Date(row.date+'T00:00:00');
+    const holiday = hMap[row.date];
+    if(holiday && !row.remark){ row.remark = holiday; count++; }
+    else if(d.getDay()===5 && !row.remark){ row.remark = 'সাপ্তাহিক ছুটি (শুক্রবার)'; count++; }
+  });
+  saveState(); renderTab();
+  toast(count+' টি সারিতে মন্তব্য বসানো হয়েছে');
+}
+function clearMonth(){
+  if(STATE.submitted[CURRENT_MONTH]){
+    toast('⚠ এই মাসের রিপোর্ট জমা দেওয়া আছে, তাই Clear কাজ করবে না। মুছতে হলে আগে "জমা বাতিল করুন" চাপুন।', 5000);
+    return;
+  }
+  if(!confirm('এই মাসের সব সিলেকশন ও মন্তব্য মুছে ফেলা হবে। আপনি কি নিশ্চিত?')) return;
+  getMonthEntry(CURRENT_MONTH).rows.forEach(row=>{ row.code=''; row.remark=''; });
+  saveState(); renderTab();
+  toast('এই মাসের সব তথ্য মুছে ফেলা হয়েছে');
+}
+let SAVING_IN_PROGRESS = false;
+
+/* ================= প্রতিটি ঘরের লেখা মেপে প্রয়োজনমতো ফন্ট ছোট করা (এক্সেলের "Shrink to fit") =================
+   এই পুরো হিসাবটা স্ক্রিনের বাইরে (অদৃশ্য) একটা কপির উপর করা হয়, তাই আসল পাতায় কোনো
+   পরিবর্তন/ফ্লিকার দেখা যায় না — শুধু প্রিন্ট/PDF আউটপুটেই এর প্রভাব পড়ে। */
+function buildOffscreenClone(){
+  const sheet = document.getElementById('reportSheet');
+  if(!sheet) return null;
+  const clone = sheet.cloneNode(true);
+  clone.removeAttribute('id');
+  clone.style.width = '198mm';
+  clone.style.maxWidth = '198mm';
+  const wrap = document.createElement('div');
+  wrap.className = 'pdf-export-mode';
+  wrap.style.cssText = 'position:fixed;top:0;left:-10000px;background:#fff;pointer-events:none;';
+  wrap.appendChild(clone);
+  document.body.appendChild(wrap);
+  return { wrap, clone };
+}
+function autofitCells(root){
+  // ধাপ ১: কলাম ১-১৪ এর সব ঘরের জন্য একটামাত্র অভিন্ন ফন্ট সাইজ বের করা (রো-ভিত্তিতে আলাদা নয়) —
+  // এতে প্রতিটি সাধারণ সারির উচ্চতা সমান থাকে, কোনো সারি বাকিগুলোর চেয়ে চিকন/মোটা দেখায় না
+  const rows = Array.from(root.querySelectorAll('table tbody tr'));
+  const mainCellsByRow = rows.map(row=>Array.from(row.querySelectorAll('td:not(.select-col)')).slice(0,14));
+  const allMainCells = mainCellsByRow.flat();
+  const MAIN_MAX = 12.5, MAIN_MIN = 7.5;
+  let size = MAIN_MAX;
+  allMainCells.forEach(td=>{ td.style.whiteSpace='nowrap'; td.style.fontSize=size+'px'; });
+  let guard = 0;
+  while(allMainCells.some(td=>td.scrollWidth > td.clientWidth) && size > MAIN_MIN && guard < 20){
+    size -= 0.5;
+    allMainCells.forEach(td=>{ td.style.fontSize = size+'px'; });
+    guard++;
+  }
+  // ধাপ ২: মন্তব্য কলাম — একই অভিন্ন সাইজ দিয়ে চেষ্টা; শুধু যে নির্দিষ্ট সারিতে না আঁটবে,
+  // কেবল সেই একটা ঘরই আলাদাভাবে আরেকটু ছোট হবে বা প্রয়োজনে দুই লাইনে যাবে
+  const results = [];
+  rows.forEach((row,ri)=>{
+    const cells = Array.from(row.querySelectorAll('td:not(.select-col)'));
+    const rowResult = mainCellsByRow[ri].map(()=>({size, wrapMode:'nowrap'}));
+    const remarkTd = cells[14];
+    if(remarkTd){
+      let rSize = size;
+      remarkTd.style.whiteSpace = 'nowrap';
+      remarkTd.style.fontSize = rSize + 'px';
+      let g = 0;
+      while(remarkTd.scrollWidth > remarkTd.clientWidth && rSize > 6.5 && g < 20){
+        rSize -= 0.5;
+        remarkTd.style.fontSize = rSize + 'px';
+        g++;
+      }
+      let wrapMode = 'nowrap';
+      if(remarkTd.scrollWidth > remarkTd.clientWidth){
+        wrapMode = 'normal';
+        remarkTd.style.whiteSpace = 'normal';
+      }
+      rowResult.push({size:rSize, wrapMode});
+    }
+    results.push(rowResult);
+  });
+  return results;
+}
+function applyFitResultsToLiveSheet(results){
+  const sheet = document.getElementById('reportSheet');
+  if(!sheet) return;
+  sheet.querySelectorAll('table tbody tr').forEach((row, ri)=>{
+    const cells = row.querySelectorAll('td:not(.select-col)');
+    const rr = results[ri];
+    if(!rr) return;
+    cells.forEach((td, i)=>{
+      const r = rr[i];
+      if(!r) return;
+      // কাস্টম প্রপার্টি হিসেবে বসানো হচ্ছে — স্ক্রিনের সাধারণ CSS এগুলো ব্যবহারই করে না,
+      // শুধু @media print নিয়মেই এগুলো পড়া হয়, তাই স্ক্রিনে কোনো প্রভাব পড়ে না
+      td.style.setProperty('--fit-size', r.size + 'px');
+      td.style.setProperty('--fit-wrap', r.wrapMode);
+    });
+  });
+}
+function clearFitResultsFromLiveSheet(){
+  const sheet = document.getElementById('reportSheet');
+  if(!sheet) return;
+  sheet.querySelectorAll('table tbody td').forEach(td=>{
+    td.style.removeProperty('--fit-size');
+    td.style.removeProperty('--fit-wrap');
+  });
+}
+/* পাতার নিচে ফাঁকা জায়গা না রেখে সব সারিকে সমান করে ছড়িয়ে পুরো পাতা ভরে দেওয়া হয় */
+function stretchRowsToFillPage(root){
+  const table = root.querySelector('table');
+  const tbody = root.querySelector('table tbody');
+  const thead = root.querySelector('table thead');
+  if(!table || !tbody) return [];
+
+  // ব্রাউজারের mm→px রূপান্তর যাচাই করতে একটা অস্থায়ী ক্যালিব্রেশন এলিমেন্ট ব্যবহার হচ্ছে
+  const calib = document.createElement('div');
+  calib.style.cssText = 'position:fixed;visibility:hidden;height:285mm;width:0;';
+  document.body.appendChild(calib);
+  const targetTotalPx = calib.getBoundingClientRect().height;
+  calib.remove();
+
+  const rootRect = root.getBoundingClientRect();
+  const tableRect = table.getBoundingClientRect();
+  const nonTableHeight = rootRect.height - tableRect.height; // হেডার+কর্মীর তথ্য+নোট+স্বাক্ষর অংশ
+  const theadHeight = thead ? thead.getBoundingClientRect().height : 0;
+
+  const bodyRows = Array.from(tbody.querySelectorAll('tr'));
+  const numRows = bodyRows.length;
+  if(numRows===0) return [];
+
+  const currentBodyHeight = bodyRows.reduce((sum,tr)=>sum+tr.getBoundingClientRect().height, 0);
+  const availableForBody = targetTotalPx - nonTableHeight - theadHeight;
+  const extra = availableForBody - currentBodyHeight;
+  const heights = [];
+  if(extra > 4){
+    const perRowExtra = extra / numRows;
+    bodyRows.forEach(tr=>{
+      const h = tr.getBoundingClientRect().height + perRowExtra;
+      tr.style.height = h + 'px';
+      heights.push(h);
+    });
+  } else {
+    bodyRows.forEach(tr=>heights.push(tr.getBoundingClientRect().height));
+  }
+  return heights;
+}
+function applyRowHeightsToLiveSheet(heights){
+  const sheet = document.getElementById('reportSheet');
+  if(!sheet) return;
+  sheet.querySelectorAll('table tbody tr').forEach((tr,i)=>{
+    if(heights[i]!=null) tr.style.setProperty('--row-h', heights[i] + 'px');
+  });
+}
+function clearRowHeightsFromLiveSheet(){
+  const sheet = document.getElementById('reportSheet');
+  if(!sheet) return;
+  sheet.querySelectorAll('table tbody tr').forEach(tr=>tr.style.removeProperty('--row-h'));
+}
+
+/* ================= প্রিন্ট (ফাইলের নামসহ) ================= */
+async function printReport(){
+  const prevTitle = document.title;
+  document.title = reportFileBaseName(CURRENT_MONTH);
+  const off = buildOffscreenClone();
+  if(off){
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    const results = autofitCells(off.clone);
+    applyFitResultsToLiveSheet(results);
+    const heights = stretchRowsToFillPage(off.clone);
+    applyRowHeightsToLiveSheet(heights);
+    off.wrap.remove();
+  }
+  let restored = false;
+  const restore = ()=>{
+    if(restored) return;
+    restored = true;
+    document.title = prevTitle;
+    clearFitResultsFromLiveSheet();
+    clearRowHeightsFromLiveSheet();
+    window.removeEventListener('afterprint', restore);
+  };
+  window.addEventListener('afterprint', restore);
+  setTimeout(restore, 6000); // afterprint কিছু ব্রাউজারে না এলেও নিরাপত্তার জন্য
+  window.print();
+}
+
+/* ================= PDF তৈরি ও হোয়াটসঅ্যাপে শেয়ার ================= */
+async function sharePDFToWhatsApp(){
+  const btn = document.getElementById('whatsappShareBtn');
+  if(!document.getElementById('reportSheet')) return;
+  if(typeof html2canvas==='undefined' || typeof window.jspdf==='undefined'){
+    toast('⚠ PDF টুল লোড হয়নি — ইন্টারনেট সংযোগ যাচাই করে আবার চেষ্টা করুন');
+    return;
+  }
+  const origLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ PDF তৈরি হচ্ছে...';
+  const off = buildOffscreenClone();
+  if(!off){ btn.disabled = false; btn.textContent = origLabel; return; }
+
+  try{
+    // ব্রাউজারকে নতুন CSS/প্রস্থ প্রয়োগের জন্য এক ফ্রেম সময় দেওয়া হচ্ছে
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    autofitCells(off.clone);
+    stretchRowsToFillPage(off.clone);
+    // মোবাইল ব্রাউজারে অতিরিক্ত রেজোলিউশনে ক্যানভাস মেমরি/সাইজ সীমা ছাড়িয়ে ব্যর্থ হতে পারে,
+    // তাই নিরাপদ মাত্রা থেকে শুরু করে প্রয়োজনে ধাপে ধাপে কম রেজোলিউশনে আবার চেষ্টা করা হয়
+    let canvas = null, lastErr = null;
+    for(const s of [3, 2, 1.5]){
+      try{
+        canvas = await html2canvas(off.clone, {scale:s, backgroundColor:'#ffffff', useCORS:true, letterRendering:true});
+        break;
+      }catch(e){ lastErr = e; canvas = null; }
+    }
+    if(!canvas) throw (lastErr || new Error('canvas capture failed'));
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 6;
+    const imgW = pageW - margin*2; // = CAPTURE_WIDTH_MM, তাই ক্যাপচারের অনুপাতই বজায় থাকে
+    const imgH = Math.min(canvas.height * (imgW/canvas.width), pageH - margin*2);
+    const imgData = canvas.toDataURL('image/png'); // PNG — JPEG কম্প্রেশন লেখা/বর্ডার ঝাপসা করে দিচ্ছিল
+    pdf.addImage(imgData, 'PNG', margin, margin, imgW, imgH);
+
+    const w = STATE.worker;
+    const monthLabel = document.querySelector('.report-head-month strong')?.textContent || CURRENT_MONTH;
+    const fileName = `${reportFileBaseName(CURRENT_MONTH)}.pdf`;
+    const blob = pdf.output('blob');
+    const file = new File([blob], fileName, {type:'application/pdf'});
+
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({
+        files:[file],
+        title: reportFileBaseName(CURRENT_MONTH),
+        text:`${esc(w.name)} — ${monthLabel} মাসের রিপোর্ট`
+      });
+      toast('শেয়ার শীট খোলা হয়েছে ✔ — এখান থেকে হোয়াটসঅ্যাপ বেছে নিন');
+    } else {
+      pdf.save(fileName);
+      toast('আপনার ব্রাউজারে সরাসরি শেয়ার সমর্থিত নয় — PDF ডাউনলোড হয়েছে, এবার হোয়াটসঅ্যাপ খুলে ফাইলটি Attach করুন');
+      setTimeout(()=>{ window.open('https://wa.me/', '_blank'); }, 600);
+    }
+  }catch(err){
+    if(err && err.name==='AbortError'){
+      // ব্যবহারকারী নিজে শেয়ার শীট বাতিল করেছেন — এটা কোনো সমস্যা নয়
+    } else {
+      console.error('PDF/শেয়ার ব্যর্থ', err);
+      toast('⚠ PDF তৈরি/শেয়ার করা যায়নি — আবার চেষ্টা করুন');
+    }
+  } finally {
+    off.wrap.remove();
+    btn.disabled = false;
+    btn.textContent = origLabel;
+  }
+}
+window.addEventListener('beforeunload', function(e){
+  if(SAVING_IN_PROGRESS){
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+async function submitMonth(){
+  STATE.submitted[CURRENT_MONTH] = new Date().toISOString();
+  SAVING_IN_PROGRESS = true;
+  toast('সংরক্ষণ করা হচ্ছে... একটু অপেক্ষা করুন');
+  let ok = false;
+  for(let attempt=1; attempt<=3 && !ok; attempt++){
+    ok = await saveState();
+    if(!ok && attempt<3){
+      toast(`সংরক্ষণে সমস্যা হয়েছে, আবার চেষ্টা করা হচ্ছে... (${attempt}/৩)`);
+      await new Promise(r=>setTimeout(r, 1200*attempt));
+    }
+  }
+  SAVING_IN_PROGRESS = false;
+  renderTab();
+  if(ok){
+    toast('মাসিক রিপোর্ট জমা হয়েছে ✔ — এখন ফাইল বন্ধ করতে পারেন');
+  } else {
+    delete STATE.submitted[CURRENT_MONTH];
+    renderTab();
+    toast('⚠ ৩ বার চেষ্টা করেও সংরক্ষণ ব্যর্থ হয়েছে — নিচে কারণ দেখুন', 6000);
+  }
+}
+async function unsubmitMonth(){
+  delete STATE.submitted[CURRENT_MONTH];
+  SAVING_IN_PROGRESS = true;
+  await saveState();
+  SAVING_IN_PROGRESS = false;
+  renderTab();
+}
+
+/* ================= কর্মী ও কেন্দ্র তালিকা ট্যাব ================= */
+function setupTabHTML(){
+  const w = STATE.worker;
+  const rows = STATE.centerRows.map((r,i)=>{
+    const total = (Number(r.houseTo||0)-Number(r.houseFrom||0)+1) + Number(r.newC||0) - Number(r.cancelC||0);
+    return `
+    <tr>
+      <td><input type="text" value="${esc(r.blockNo)}" oninput="updateCenter('${r.id}','blockNo',this.value)" style="width:56px"></td>
+      <td><input type="text" value="${esc(r.note)}" placeholder="—" oninput="updateCenter('${r.id}','note',this.value)" style="width:44px"></td>
+      <td>
+        <select onchange="updateCenter('${r.id}','purpose',this.value)" style="min-width:90px">
+          ${['IPC','EPI','সি সি সেবা'].map(p=>`<option value="${p}" ${r.purpose===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+      </td>
+      <td><input type="text" value="${esc(r.mouzaNo)}" oninput="updateCenter('${r.id}','mouzaNo',this.value)" style="width:56px"></td>
+      <td><input type="text" value="${esc(r.mouzaName)}" placeholder="মৌজার নাম" oninput="updateCenter('${r.id}','mouzaName',this.value)"></td>
+      <td><input type="text" value="${esc(r.villageName)}" placeholder="গ্রামের নাম" oninput="updateCenter('${r.id}','villageName',this.value)"></td>
+      <td><input type="number" value="${r.houseFrom}" oninput="updateCenter('${r.id}','houseFrom',this.value)" style="width:64px"></td>
+      <td><input type="number" value="${r.houseTo}" oninput="updateCenter('${r.id}','houseTo',this.value)" style="width:64px"></td>
+      <td><input type="number" value="${r.newC||0}" oninput="updateCenter('${r.id}','newC',this.value)" style="width:52px"></td>
+      <td><input type="number" value="${r.cancelC||0}" oninput="updateCenter('${r.id}','cancelC',this.value)" style="width:52px"></td>
+      <td class="muted">${bnNum(total)}</td>
+      <td><input type="text" value="${esc(r.ownerName)}" placeholder="মালিকের নাম" oninput="updateCenter('${r.id}','ownerName',this.value)"></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteCenter('${r.id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  return `
+  <div class="card">
+    <h2>কর্মীর তথ্য</h2>
+    <div class="grid">
+      <div class="field"><label>কর্মীর নাম</label><input type="text" value="${esc(w.name)}" oninput="updateWorker('name',this.value)"></div>
+      <div class="field"><label>পদবি</label><input type="text" value="${esc(w.designation)}" oninput="updateWorker('designation',this.value)"></div>
+      <div class="field"><label>মোবাইল</label><input type="text" value="${esc(w.mobile)}" oninput="updateWorker('mobile',this.value)"></div>
+      <div class="field"><label>উপজেলা</label><input type="text" value="${esc(w.upazila)}" oninput="updateWorker('upazila',this.value)"></div>
+      <div class="field"><label>জেলা</label><input type="text" value="${esc(w.district)}" oninput="updateWorker('district',this.value)"></div>
+      <div class="field"><label>ইউনিয়ন</label><input type="text" value="${esc(w.union)}" oninput="updateWorker('union',this.value)"></div>
+      <div class="field"><label>ওয়ার্ড নং</label><input type="text" value="${esc(w.wardNo)}" oninput="updateWorker('wardNo',this.value)"></div>
+    </div>
+  </div>
+  ${CURRENT_ROLE==='admin' ? adminLoginSettingsHTML() : ''}
+  <div class="card">
+    <div class="top-bar">
+      <h2 style="border:none;margin:0;">কেন্দ্র তালিকা (Center details)</h2>
+      <button class="btn btn-primary btn-sm" onclick="addCenter()">+ নতুন কেন্দ্র যোগ করুন</button>
+    </div>
+    <p class="hint" style="margin-top:-6px;margin-bottom:12px;">
+      এই তালিকা থেকেই মাসিক রিপোর্টের ড্রপডাউন তৈরি হয়। প্রতি বছর কেন্দ্র/ব্লক/বাড়ির রেঞ্জ পরিবর্তন হলে এখানে সরাসরি এডিট করুন, বা নতুন সারি যোগ করুন — কোনো কোড লাগবে না।
+    </p>
+    <div style="overflow-x:auto;">
+    <table class="setup-table center-table">
+      <thead><tr>
+        <th>ব্লক</th><th>চিহ্ন</th><th>উদ্দেশ্য</th><th>মৌজা নং</th><th>মৌজা নাম</th><th>গ্রামের নাম</th>
+        <th>বাড়ি (হইতে)</th><th>বাড়ি (পর্যন্ত)</th><th>নতুন</th><th>বিলুপ্ত</th><th>মোট</th><th>মালিকের নাম</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+  </div>`;
+}
+function updateWorker(field,val){ STATE.worker[field]=val; saveState(); }
+function adminLoginSettingsHTML(){
+  const a = STATE.auth.admin, u = STATE.auth.user;
+  return `
+  <div class="card">
+    <h2>লগইন তথ্য (শুধু এডমিন দেখতে পারবেন)</h2>
+    <p class="hint" style="margin-top:-6px;margin-bottom:12px;">এখানে দুইটা আলাদা অ্যাকাউন্ট আছে — এডমিন ও ইউজার। প্রতিটির ইউজারনেম ও রিকভারি ইমেইল পরিবর্তন করা যায়, পাসওয়ার্ড শুধু নতুন করে সেট করা যায় (দেখা যায় না)।</p>
+    <div class="grid" style="margin-bottom:10px;">
+      <div class="field"><label>👑 এডমিন ইউজারনেম</label><input type="text" value="${esc(a.username)}" oninput="updateAuth('admin','username',this.value)"></div>
+      <div class="field">
+        <label>এডমিন পাসওয়ার্ড বদলান</label>
+        <div style="display:flex;gap:6px;">
+          <input type="password" id="setupNewPassAdmin" placeholder="নতুন পাসওয়ার্ড" style="flex:1;">
+          <button class="btn btn-outline btn-sm" onclick="changePasswordFromSetup('admin')">বদলান</button>
+        </div>
+      </div>
+      <div class="field"><label>এডমিন রিকভারি ইমেইল</label><input type="text" value="${esc(a.email)}" oninput="updateAuth('admin','email',this.value)"></div>
+    </div>
+    <div class="grid">
+      <div class="field"><label>👤 ইউজার ইউজারনেম</label><input type="text" value="${esc(u.username)}" oninput="updateAuth('user','username',this.value)"></div>
+      <div class="field">
+        <label>ইউজার পাসওয়ার্ড বদলান</label>
+        <div style="display:flex;gap:6px;">
+          <input type="password" id="setupNewPassUser" placeholder="নতুন পাসওয়ার্ড" style="flex:1;">
+          <button class="btn btn-outline btn-sm" onclick="changePasswordFromSetup('user')">বদলান</button>
+        </div>
+      </div>
+      <div class="field"><label>ইউজার রিকভারি ইমেইল</label><input type="text" value="${esc(u.email)}" oninput="updateAuth('user','email',this.value)"></div>
+    </div>
+  </div>`;
+}
+function updateAuth(role,field,val){ STATE.auth[role][field]=val; saveState(); }
+function changePasswordFromSetup(role){
+  const inputId = role==='admin' ? 'setupNewPassAdmin' : 'setupNewPassUser';
+  const v = document.getElementById(inputId).value;
+  if(!v){ toast('নতুন পাসওয়ার্ড লিখুন'); return; }
+  STATE.auth[role].password = v;
+  saveState();
+  document.getElementById(inputId).value='';
+  toast((role==='admin'?'এডমিন':'ইউজার')+' পাসওয়ার্ড বদলানো হয়েছে ✔');
+}
+function updateCenter(id,field,val){
+  const r = STATE.centerRows.find(x=>x.id===id);
+  if(!r) return;
+  if(['houseFrom','houseTo','newC','cancelC'].includes(field)) val = Number(val)||0;
+  r[field]=val; saveState(); renderTab();
+}
+function addCenter(){
+  const id = 'c'+(STATE.nextRowId++);
+  STATE.centerRows.push({id, mouzaNo:'', mouzaName:'', villageName:'', houseFrom:0, houseTo:0, newC:0, cancelC:0, blockNo:'', ownerName:'', purpose:'IPC', note:''});
+  saveState(); renderTab();
+  toast('নতুন কেন্দ্র সারি যোগ করা হয়েছে');
+}
+function deleteCenter(id){
+  if(!confirm('এই কেন্দ্রের তথ্য মুছে ফেলা হবে। নিশ্চিত?')) return;
+  STATE.centerRows = STATE.centerRows.filter(r=>r.id!==id);
+  saveState(); renderTab();
+}
+
+/* ================= ছুটির তালিকা ট্যাব ================= */
+function holidaysTabHTML(){
+  const sorted = [...STATE.holidays].sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+  const rows = sorted.map(h=>`
+    <tr>
+      <td><input type="date" value="${esc(h.date)}" oninput="updateHoliday('${h.id}','date',this.value)" style="width:150px"></td>
+      <td><input type="text" value="${esc(h.name)}" placeholder="ছুটির নাম" oninput="updateHoliday('${h.id}','name',this.value)"></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteHoliday('${h.id}')">✕</button></td>
+    </tr>`).join('');
+  return `
+  <div class="card">
+    <div class="top-bar">
+      <h2 style="border:none;margin:0;">ছুটির তালিকা (Public Holidays)</h2>
+      <button class="btn btn-primary btn-sm" onclick="addHoliday()">+ নতুন ছুটি যোগ করুন</button>
+    </div>
+    <p class="hint" style="margin-top:-6px;margin-bottom:12px;">
+      এখানে যোগ/পরিবর্তন/মুছে ফেলা যেকোনো ছুটি "Fill Remark" বাটন চাপলে মাসিক রিপোর্টে স্বয়ংক্রিয়ভাবে বসে যাবে। প্রতি বছরের সরকারি ছুটির তালিকা এখানে আপডেট করে রাখুন।
+    </p>
+    ${sorted.length?`
+    <div style="overflow-x:auto;">
+    <table class="setup-table">
+      <thead><tr><th>তারিখ</th><th>ছুটির নাম</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>` : `<div class="empty">কোনো ছুটি যোগ করা নেই</div>`}
+  </div>`;
+}
+function updateHoliday(id,field,val){
+  const h = STATE.holidays.find(x=>x.id===id);
+  if(!h) return;
+  h[field]=val; saveState(); renderTab();
+}
+function addHoliday(){
+  const id = 'h'+(STATE.nextHolidayId++);
+  STATE.holidays.push({id, date:CURRENT_MONTH+'-01', name:''});
+  saveState(); renderTab();
+  toast('নতুন ছুটি যোগ করা হয়েছে');
+}
+function deleteHoliday(id){
+  STATE.holidays = STATE.holidays.filter(h=>h.id!==id);
+  saveState(); renderTab();
+}
+
+/* ================= ইতিহাস ট্যাব ================= */
+function allRowsFlat(){
+  const out = [];
+  Object.keys(STATE.entries).forEach(ym=>{
+    STATE.entries[ym].rows.forEach(r=>{
+      const info = lookupByCode(r.code);
+      if(!info) return;
+      out.push({date:r.date, newC:Number(info.row.newC||0), cancelC:Number(info.row.cancelC||0), total:info.total});
+    });
+  });
+  return out;
+}
+function grandTotalHTML(){
+  const from = window._gtFrom || '';
+  const to = window._gtTo || '';
+  const rows = allRowsFlat().filter(r=>{
+    if(from && r.date < from) return false;
+    if(to && r.date > to) return false;
+    return true;
+  });
+  const sums = rows.reduce((a,r)=>{a.newC+=r.newC;a.cancelC+=r.cancelC;a.total+=r.total;return a;}, {newC:0,cancelC:0,total:0});
+  return `
+  <div class="card">
+    <h2>বার্ষিক রিপোর্টের জন্য সর্বমোট সংখ্যা খুঁজে নিন</h2>
+    <div class="search-box">
+      <div class="field" style="max-width:200px;"><label>তারিখ হইতে</label><input type="date" value="${from}" oninput="window._gtFrom=this.value; renderTab();"></div>
+      <div class="field" style="max-width:200px;"><label>তারিখ পর্যন্ত</label><input type="date" value="${to}" oninput="window._gtTo=this.value; renderTab();"></div>
+    </div>
+    <div class="grid">
+      <div class="card" style="background:var(--green-soft);text-align:center;padding:14px;">
+        <div class="hint">নতুন</div><div style="font-size:22px;font-weight:800;color:var(--green-deep);">${bnNum(sums.newC)}</div>
+      </div>
+      <div class="card" style="background:var(--red-soft);text-align:center;padding:14px;">
+        <div class="hint">বিলুপ্ত</div><div style="font-size:22px;font-weight:800;color:var(--red);">${bnNum(sums.cancelC)}</div>
+      </div>
+      <div class="card" style="background:var(--gold-soft);text-align:center;padding:14px;">
+        <div class="hint">মোট পরিদর্শিত বাড়ি</div><div style="font-size:22px;font-weight:800;color:var(--gold);">${bnNum(sums.total)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+/* ================= ব্যাকআপ এক্সপোর্ট/ইমপোর্ট ================= */
+function exportBackup(){
+  const dataStr = JSON.stringify(STATE, null, 2);
+  const blob = new Blob([dataStr], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = isoDate(new Date());
+  a.href = url;
+  a.download = `monthly-report-backup-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('ব্যাকআপ ফাইল ডাউনলোড হয়েছে');
+}
+function triggerImport(){ document.getElementById('importFileInput').click(); }
+function handleImportFile(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try{
+      const imported = JSON.parse(e.target.result);
+      if(!imported.worker || !imported.centerRows){ toast('ফাইলটি সঠিক ব্যাকআপ ফরম্যাটে নেই'); return; }
+      if(!confirm('বর্তমান সব ডেটা মুছে ব্যাকআপ ফাইলের ডেটা বসানো হবে। নিশ্চিত?')) return;
+      STATE = migrateState(imported);
+      await saveState();
+      toast('ব্যাকআপ থেকে ডেটা ফিরিয়ে আনা হয়েছে ✔');
+      render();
+    }catch(err){
+      toast('ফাইলটি পড়া যায়নি — সঠিক ব্যাকআপ ফাইল কিনা দেখুন');
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function historyTabHTML(){
+  const months = Object.keys(STATE.entries).sort().reverse();
+  let searchTerm = window._searchTerm || '';
+  let filtered = months.filter(ym=> !searchTerm || ym.includes(searchTerm));
+
+  const listHTML = filtered.length ? filtered.map(ym=>{
+    const [y,m]=ym.split('-').map(Number);
+    const label = BN_MONTHS[m-1]+' '+bnNum(y);
+    const submitted = STATE.submitted[ym];
+    const entry = STATE.entries[ym];
+    const filledDays = entry.rows.filter(r=>r.code && r.code!=='----').length;
+    return `
+    <div class="history-item">
+      <div>
+        <strong>${label}</strong>
+        <div class="muted" style="font-size:12px;">${bnNum(filledDays)} দিন পূরণ করা হয়েছে ${submitted?' • জমা: '+new Date(submitted).toLocaleDateString('bn-BD'):''}</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline" onclick="openMonth('${ym}')">দেখুন</button>
+        <button class="btn btn-danger" onclick="deleteMonthReport('${ym}')">🗑 ডিলিট</button>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty">কোনো মাসের রিপোর্ট এখনো তৈরি হয়নি</div>`;
+
+  return `
+  <div class="card">
+    <div class="top-bar">
+      <h2 style="border:none;margin:0;">ইতিহাস ও সার্চ</h2>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-gold btn-sm" onclick="exportBackup()">⬇ ব্যাকআপ ডাউনলোড</button>
+        <button class="btn btn-outline btn-sm" onclick="triggerImport()">⬆ ব্যাকআপ থেকে ফিরিয়ে আনুন</button>
+        <input type="file" id="importFileInput" accept="application/json" style="display:none;" onchange="handleImportFile(this)">
+      </div>
+    </div>
+    <p class="hint" style="margin-top:-8px;margin-bottom:12px;">
+      অন্য ফোন বা কম্পিউটারে সব ডেটা নিয়ে যেতে চাইলে: এখান থেকে "ব্যাকআপ ডাউনলোড" করে ফাইলটা Google Drive/ইমেইলে রাখুন, তারপর অন্য ডিভাইসে এই অ্যাপ খুলে "ব্যাকআপ থেকে ফিরিয়ে আনুন" চাপুন।
+    </p>
+    <div class="search-box">
+      <input type="text" placeholder="মাস খুঁজুন (যেমন 2026-08)" value="${esc(searchTerm)}" oninput="window._searchTerm=this.value; renderTab();">
+    </div>
+    <div class="history-list">${listHTML}</div>
+  </div>
+  ${grandTotalHTML()}`;
+}
+function openMonth(ym){ CURRENT_MONTH=ym; ACTIVE_TAB='entry'; render(); }
+async function deleteMonthReport(ym){
+  const [y,m] = ym.split('-').map(Number);
+  const label = BN_MONTHS[m-1]+' '+bnNum(y);
+  if(!confirm(`${label} মাসের পুরো রিপোর্ট স্থায়ীভাবে মুছে ফেলা হবে। আপনি কি নিশ্চিত?`)) return;
+  delete STATE.entries[ym];
+  delete STATE.submitted[ym];
+  const ok = await saveState();
+  renderTab();
+  toast(ok ? `${label} মাসের রিপোর্ট মুছে ফেলা হয়েছে` : '⚠ মুছতে সমস্যা হয়েছে, আবার চেষ্টা করুন');
+}
+
+/* ---------------- init ---------------- */
+(async function init(){
+  STATE = await loadState();
+  render();
+})();
+</script>
+</body>
+</html>
