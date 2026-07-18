@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>মাসিক অগ্রিম কর্মসূচি</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --ink:#1b2430;
@@ -363,10 +363,89 @@ async function loadState(){
   return defaultState();
 }
 let LAST_SAVE_ERROR = null;
+
+/* ================= Firebase (Firestore) — সব ইউজারের মধ্যে ডেটা রিয়েল-টাইম শেয়ার =================
+   একটামাত্র শেয়ার্ড ডকুমেন্টে (app_data/shared_state) পুরো STATE JSON আকারে রাখা হয়।
+   কেউ কিছু বদলালেই (নিজে হোক বা অন্য কেউ), সবার স্ক্রিনে সাথে সাথে সেটা প্রতিফলিত হয়। */
+const firebaseConfig = {
+  apiKey: "AIzaSyDI1zX3hDRTRbs8Hls7OxP6U0_Le_IEbQw",
+  authDomain: "monthly-report-app-1866a.firebaseapp.com",
+  projectId: "monthly-report-app-1866a",
+  storageBucket: "monthly-report-app-1866a.firebasestorage.app",
+  messagingSenderId: "703092180506",
+  appId: "1:703092180506:web:d0b07485e77aff1752b3a3",
+  measurementId: "G-FZDFY172R4"
+};
+let fbDb = null, fbDocRef = null, fbReady = false;
+let SUPPRESS_NEXT_SNAPSHOT = false; // নিজের করা লেখা নিজেই যেন আবার প্রসেস না করে (পুনরাবৃত্তি এড়াতে)
+let fbSyncTimer = null;
+let FIREBASE_STATUS = 'connecting'; // 'connecting' | 'online' | 'offline'
+
+function initFirebase(){
+  if(!(window.firebase && firebase.initializeApp)){
+    setTimeout(initFirebase, 400); // SDK তখনও লোড না হয়ে থাকলে একটু পর আবার চেষ্টা
+    return;
+  }
+  try{
+    firebase.initializeApp(firebaseConfig);
+    fbDb = firebase.firestore();
+    fbDocRef = fbDb.collection('app_data').doc('shared_state');
+    fbReady = true;
+    listenFirebase();
+  }catch(e){
+    console.error('firebase init failed', e);
+    FIREBASE_STATUS = 'offline';
+  }
+}
+
+function listenFirebase(){
+  if(!fbReady) return;
+  fbDocRef.onSnapshot((doc)=>{
+    FIREBASE_STATUS = 'online';
+    if(SUPPRESS_NEXT_SNAPSHOT){ SUPPRESS_NEXT_SNAPSHOT = false; return; }
+    if(doc.exists && doc.data() && doc.data().json){
+      try{
+        STATE = migrateState(JSON.parse(doc.data().json));
+        localStorage.setItem(STORAGE_KEY, doc.data().json);
+        render();
+      }catch(e){ console.error('snapshot parse failed', e); }
+    } else {
+      // ক্লাউডে এখনো কিছু নেই — বর্তমান লোকাল ডেটা দিয়ে শুরু করা হচ্ছে
+      pushToFirebase();
+    }
+  }, (err)=>{
+    console.error('firestore listen failed', err);
+    FIREBASE_STATUS = 'offline';
+  });
+}
+
+function scheduleFirebaseSync(){
+  if(!fbReady) return;
+  clearTimeout(fbSyncTimer);
+  fbSyncTimer = setTimeout(pushToFirebase, 1200); // কয়েক মুহূর্ত অপেক্ষা করে একসাথে পাঠানো হয়
+}
+
+async function pushToFirebase(){
+  if(!fbReady) return;
+  try{
+    SUPPRESS_NEXT_SNAPSHOT = true;
+    await fbDocRef.set({
+      json: JSON.stringify(STATE),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    FIREBASE_STATUS = 'online';
+  }catch(e){
+    console.error('firebase push failed', e);
+    SUPPRESS_NEXT_SNAPSHOT = false;
+    FIREBASE_STATUS = 'offline';
+  }
+}
+
 async function saveState(){
   try{
     localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
     LAST_SAVE_ERROR = null;
+    scheduleFirebaseSync();
     return true;
   }catch(e){
     console.error('save failed', e);
@@ -534,7 +613,7 @@ function render(){
       <button class="tab-btn" style="color:var(--red);" onclick="doLogout()">🔒 লগআউট</button>
     </div>
     <div id="tab-content"></div>
-    <div class="footer-note">ডেটা শুধু আপনার এই ব্রাউজারে সংরক্ষিত হয় — অন্য কেউ দেখতে পাবে না।</div>
+    <div class="footer-note">ডেটা ক্লাউডে (Firebase) সংরক্ষিত হয় — যেকোনো ডিভাইস থেকে লগইন করলেই সর্বশেষ তথ্য দেখা যাবে।</div>
   `;
   renderTab();
 }
@@ -621,7 +700,7 @@ function entryTabHTML(){
       <button class="btn btn-gold" onclick="fillRemarks()">🗓 Fill Remark (ছুটির তালিকা থেকে বসান)</button>
       <button class="btn btn-danger" onclick="clearMonth()">🧹 Clear (সব মুছুন)</button>
       <button class="btn btn-outline" onclick="printReport()">🖨 প্রিন্ট</button>
-      <button class="btn btn-outline" id="whatsappShareBtn" onclick="sharePDFToWhatsApp()">📤 হোয়াটসঅ্যাপে শেয়ার করুন</button>
+      <button class="btn btn-outline" id="whatsappShareBtn" onclick="sharePDFToWhatsApp()">📤 হোয়াটসঅ্যাপে পাঠানোর জন্য PDF</button>
       <button class="btn btn-primary" onclick="submitMonth()">✅ মাসিক রিপোর্ট জমা দিন</button>
       ${isSubmitted?'<button class="btn btn-danger" onclick="unsubmitMonth()">জমা বাতিল করুন</button>':''}
     </div>
@@ -899,75 +978,15 @@ async function printReport(){
   window.print();
 }
 
-/* ================= PDF তৈরি ও হোয়াটসঅ্যাপে শেয়ার ================= */
+/* ================= হোয়াটসঅ্যাপে পাঠানোর জন্য PDF (এখন প্রিন্টের মতোই নিখুঁত পদ্ধতিতে) =================
+   আগে html2canvas দিয়ে পাতার একটা "ছবি" তুলে PDF বানানো হতো — এটা কখনোই ব্রাউজারের নিজস্ব
+   প্রিন্ট ইঞ্জিনের মতো স্বচ্ছ/নিখুঁত হতে পারত না (এটা ওই পদ্ধতির মৌলিক সীমাবদ্ধতা)। তাই এখন
+   এই বাটনও প্রিন্ট বাটনের মতোই আসল ব্রাউজার প্রিন্ট ডায়ালগ খোলে — সেখান থেকে "Save as PDF"
+   বেছে নিলে প্রিন্টের মতোই নিখুঁত মানের PDF পাওয়া যায়, যা তারপর হোয়াটসঅ্যাপে Attach করা যাবে। */
 async function sharePDFToWhatsApp(){
-  const btn = document.getElementById('whatsappShareBtn');
   if(!document.getElementById('reportSheet')) return;
-  if(typeof html2canvas==='undefined' || typeof window.jspdf==='undefined'){
-    toast('⚠ PDF টুল লোড হয়নি — ইন্টারনেট সংযোগ যাচাই করে আবার চেষ্টা করুন');
-    return;
-  }
-  const origLabel = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = '⏳ PDF তৈরি হচ্ছে...';
-  const off = buildOffscreenClone();
-  if(!off){ btn.disabled = false; btn.textContent = origLabel; return; }
-
-  try{
-    // ব্রাউজারকে নতুন CSS/প্রস্থ প্রয়োগের জন্য এক ফ্রেম সময় দেওয়া হচ্ছে
-    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-    autofitCells(off.clone);
-    stretchRowsToFillPage(off.clone);
-    // মোবাইল ব্রাউজারে অতিরিক্ত রেজোলিউশনে ক্যানভাস মেমরি/সাইজ সীমা ছাড়িয়ে ব্যর্থ হতে পারে,
-    // তাই নিরাপদ মাত্রা থেকে শুরু করে প্রয়োজনে ধাপে ধাপে কম রেজোলিউশনে আবার চেষ্টা করা হয়
-    let canvas = null, lastErr = null;
-    for(const s of [3, 2, 1.5]){
-      try{
-        canvas = await html2canvas(off.clone, {scale:s, backgroundColor:'#ffffff', useCORS:true, letterRendering:true});
-        break;
-      }catch(e){ lastErr = e; canvas = null; }
-    }
-    if(!canvas) throw (lastErr || new Error('canvas capture failed'));
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 6;
-    const imgW = pageW - margin*2; // = CAPTURE_WIDTH_MM, তাই ক্যাপচারের অনুপাতই বজায় থাকে
-    const imgH = Math.min(canvas.height * (imgW/canvas.width), pageH - margin*2);
-    const imgData = canvas.toDataURL('image/png'); // PNG — JPEG কম্প্রেশন লেখা/বর্ডার ঝাপসা করে দিচ্ছিল
-    pdf.addImage(imgData, 'PNG', margin, margin, imgW, imgH);
-
-    const w = STATE.worker;
-    const monthLabel = document.querySelector('.report-head-month strong')?.textContent || CURRENT_MONTH;
-    const fileName = `${reportFileBaseName(CURRENT_MONTH)}.pdf`;
-    const blob = pdf.output('blob');
-    const file = new File([blob], fileName, {type:'application/pdf'});
-
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({
-        files:[file],
-        title: reportFileBaseName(CURRENT_MONTH),
-        text:`${esc(w.name)} — ${monthLabel} মাসের রিপোর্ট`
-      });
-      toast('শেয়ার শীট খোলা হয়েছে ✔ — এখান থেকে হোয়াটসঅ্যাপ বেছে নিন');
-    } else {
-      pdf.save(fileName);
-      toast('আপনার ব্রাউজারে সরাসরি শেয়ার সমর্থিত নয় — PDF ডাউনলোড হয়েছে, এবার হোয়াটসঅ্যাপ খুলে ফাইলটি Attach করুন');
-      setTimeout(()=>{ window.open('https://wa.me/', '_blank'); }, 600);
-    }
-  }catch(err){
-    if(err && err.name==='AbortError'){
-      // ব্যবহারকারী নিজে শেয়ার শীট বাতিল করেছেন — এটা কোনো সমস্যা নয়
-    } else {
-      console.error('PDF/শেয়ার ব্যর্থ', err);
-      toast('⚠ PDF তৈরি/শেয়ার করা যায়নি — আবার চেষ্টা করুন');
-    }
-  } finally {
-    off.wrap.remove();
-    btn.disabled = false;
-    btn.textContent = origLabel;
-  }
+  toast('প্রিন্ট ডায়ালগ খুলছে — সেখানে "Save as PDF" বেছে নিন, তারপর হোয়াটসঅ্যাপ খুলে ফাইলটি Attach করে পাঠান', 6000);
+  await printReport();
 }
 window.addEventListener('beforeunload', function(e){
   if(SAVING_IN_PROGRESS){
@@ -1208,7 +1227,8 @@ function grandTotalHTML(){
     </div>
   </div>`;
 }
-/* ================= ব্যাকআপ এক্সপোর্ট/ইমপোর্ট ================= */
+
+
 function exportBackup(){
   const dataStr = JSON.stringify(STATE, null, 2);
   const blob = new Blob([dataStr], {type:'application/json'});
@@ -1305,6 +1325,7 @@ async function deleteMonthReport(ym){
 (async function init(){
   STATE = await loadState();
   render();
+  initFirebase();
 })();
 </script>
 </body>
