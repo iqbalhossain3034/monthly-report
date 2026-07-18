@@ -410,8 +410,10 @@ function listenFirebase(){
         render();
       }catch(e){ console.error('snapshot parse failed', e); }
     } else {
-      // ক্লাউডে এখনো কিছু নেই — বর্তমান লোকাল ডেটা দিয়ে শুরু করা হচ্ছে
-      pushToFirebase();
+      // ক্লাউডে এখনো কিছু নেই — শুধু তখনই বর্তমান লোকাল ডেটা পাঠানো হবে যদি সত্যিই কিছু থাকে;
+      // একটা একদম খালি ব্রাউজার যেন ভুল করে খালি ডেটা পাঠিয়ে অন্য কারো আসল ডেটা মুছে না দেয়
+      const hasRealData = STATE && STATE.entries && Object.keys(STATE.entries).length > 0;
+      if(hasRealData) pushToFirebase();
     }
   }, (err)=>{
     console.error('firestore listen failed', err);
