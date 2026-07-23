@@ -84,6 +84,7 @@
   .remark-col{min-width:230px;}
   .village-col{min-width:105px;}
   .owner-col{min-width:190px;}
+  .block-col{min-width:44px;white-space:nowrap;}
   tbody tr:nth-child(even){background:#fbf9f2;}
   tbody tr.off-day{background:#c7c7c2!important;}
   tbody tr.off-day td{color:#3a3a36;}
@@ -138,9 +139,10 @@
     .report-note{font-size:9px;margin:8px 0 12px;}
     .report-sign{font-size:10.5px;line-height:1.5;}
     table{font-size:12.5px;table-layout:fixed;width:100%;border:1px solid #000;}
+    .toast{display:none!important;}
     /* স্ক্রিনের জন্য নির্ধারিত min-width গুলো প্রিন্টে বাতিল — নাহলে <colgroup>-এর নির্দিষ্ট
        শতাংশ-ভিত্তিক প্রস্থের সাথে সংঘর্ষ বেঁধে কলাম একে অপরের উপর উঠে যায় (ওভারল্যাপ) */
-    .select-col,.remark-col,.village-col,.owner-col{min-width:0!important;}
+    .select-col,.remark-col,.village-col,.owner-col,.block-col{min-width:0!important;}
     td.remark-col{text-align:center;}
     .table-wrap{border:1.25px solid #000;padding:2px;}
     thead th{font-size:9px;font-weight:400;line-height:1.15;padding:3px 2px;background:#e8e8e8!important;color:#000!important;}
@@ -175,7 +177,8 @@
   .pdf-export-mode .report-note{font-size:9px;margin:8px 0 12px;}
   .pdf-export-mode .report-sign{font-size:10.5px;line-height:1.5;}
   .pdf-export-mode table{font-size:12.5px;table-layout:fixed;width:100%;border:1px solid #000;}
-  .pdf-export-mode .select-col,.pdf-export-mode .remark-col,.pdf-export-mode .village-col,.pdf-export-mode .owner-col{min-width:0!important;}
+  .pdf-export-mode .toast{display:none!important;}
+  .pdf-export-mode .select-col,.pdf-export-mode .remark-col,.pdf-export-mode .village-col,.pdf-export-mode .owner-col,.pdf-export-mode .block-col{min-width:0!important;}
   .pdf-export-mode td.remark-col{text-align:center;}
   .pdf-export-mode .table-wrap{border:1.25px solid #000;padding:2px;}
   .pdf-export-mode thead th{font-size:9px;font-weight:400;line-height:1.15;padding:3px 2px;background:#e8e8e8!important;color:#000!important;}
@@ -674,7 +677,7 @@ function entryTabHTML(){
       <td>${info?bnNum(info.row.newC||0):dash}</td>
       <td>${info?bnNum(info.row.cancelC||0):dash}</td>
       <td>${info?bnNum(info.total):dash}</td>
-      <td>${info?esc(info.row.blockNo):(row.code==='সি সি সেবা'?'—':dash)}</td>
+      <td class="block-col">${info?esc(info.row.blockNo):(row.code==='সি সি সেবা'?'—':dash)}</td>
       <td class="owner-col">${info?(esc(info.row.ownerName)||'<span class="muted">?</span>'):(row.code==='সি সি সেবা'?'সি সি সেবা কেন্দ্র':dash)}</td>
       <td>${info?esc(info.row.purpose):(row.code==='সি সি সেবা'?'সি সি সেবা':dash)}</td>
       <td class="remark-col"><input type="text" class="no-print" value="${esc(row.remark)}" placeholder="—" oninput="updateRow(${idx},'remark',this.value)"><span class="print-only">${row.remark?esc(row.remark):'—'}</span></td>
