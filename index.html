@@ -80,6 +80,7 @@
   th,td{border:1px solid var(--paper-line);padding:6px 6px;text-align:center;vertical-align:middle;}
   thead th{background:var(--green-soft);color:var(--green-deep);font-weight:700;font-size:11px;}
   .select-col select{font-size:11.5px;width:100%;}
+  .select-col{min-width:230px;}
   tbody tr:nth-child(even){background:#fbf9f2;}
   tbody tr.off-day{background:#c7c7c2!important;}
   tbody tr.off-day td{color:#3a3a36;}
@@ -1323,6 +1324,15 @@ async function deleteMonthReport(ym){
   renderTab();
   toast(ok ? `${label} মাসের রিপোর্ট মুছে ফেলা হয়েছে` : '⚠ মুছতে সমস্যা হয়েছে, আবার চেষ্টা করুন');
 }
+
+/* পেইজের যেকোনো খালি জায়গায় (টেবিলের সারির বাইরে) ক্লিক করলে
+   "সর্বশেষ এডিট করা সারি"-র সবুজ হাইলাইটটি মুছে যাবে।
+   এটি শুধু স্ক্রিনে দেখানো ভিজ্যুয়াল ক্লিয়ার — ডেটা/স্টেট অপরিবর্তিত থাকে,
+   তাই পরবর্তী রি-রেন্ডারে (যেমন অন্য সারি এডিট করলে বা Firebase সিঙ্ক হলে) দরকার হলে আবার দেখাবে। */
+document.addEventListener('click', function(e){
+  if(e.target.closest('tbody tr')) return; // টেবিলের ভেতরের ক্লিক হলে কিছু করার দরকার নেই
+  document.querySelectorAll('tbody tr.active-row').forEach(tr=>tr.classList.remove('active-row'));
+}, true);
 
 /* ---------------- init ---------------- */
 (async function init(){
