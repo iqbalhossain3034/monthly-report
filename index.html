@@ -6,6 +6,7 @@
 <title>মাসিক অগ্রিম কর্মসূচি</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
   :root{
     --ink:#1b2430;
@@ -295,10 +296,6 @@ function defaultState(){
       name:'মোঃ শিমুল মিয়া', designation:'স্বাস্থ্য সহকারী', mobile:'০১৮২১২৯৯৯৯৩',
       upazila:'আড়াইহাজার', district:'নারায়ণগঞ্জ', union:'সদাসদী', wardNo:'০১'
     },
-    auth:{
-      admin:{ username:'Iqbal', password:'1722', email:'iqbal.hossain@3034.com' },
-      user:{ username:'Shimul', password:'1722', email:'shimulmai1722@gmail.com' }
-    },
     centerRows: defaultCenterRows(),
     holidays: defaultHolidays(),
     entries:{},      // { 'YYYY-MM': {category, rows:[{date,code,remark}]} }
@@ -342,12 +339,8 @@ function migrateState(state){
     state.holidays = defaultHolidays();
     state.nextHolidayId = 49;
   }
-  if(!state.auth || !state.auth.admin){
-    const old = state.auth || {};
-    state.auth = {
-      admin:{ username:'Iqbal', password:'1722', email: old.adminEmail || 'iqbal.hossain@3034.com' },
-      user:{ username: old.username || 'Shimul', password: old.password || '1722', email: old.userEmail || 'shimulmai1722@gmail.com' }
-    };
+  if(state.auth){
+    delete state.auth; // পুরনো প্লেইন-টেক্সট পাসওয়ার্ড ডেটা — Firebase Authentication এখন এটা সামলায়, তাই এটা মুছে দেওয়া হচ্ছে
   }
   if(state.nextRowId===undefined) state.nextRowId = (state.centerRows.length||24)+1;
   if(state.nextHolidayId===undefined) state.nextHolidayId = (state.holidays.length||48)+1;
@@ -359,7 +352,23 @@ let STATE = null;
 let ACTIVE_TAB = 'entry';
 let AUTHENTICATED = false;
 let CURRENT_ROLE = null; // 'admin' or 'user'
+let AUTH_CHECKED = false; // Firebase প্রথমবার auth অবস্থা জানানোর আগ পর্যন্ত true হবে না
 let CURRENT_MONTH = isoDate(new Date()).slice(0,7);
+
+/* ================= লগইন — এখন সম্পূর্ণ Firebase Authentication দিয়ে চালিত =================
+   পাসওয়ার্ড আর কোথাও প্লেইন-টেক্সটে সংরক্ষিত হয় না — Google-এর নিরাপদ Authentication
+   সিস্টেমে থাকে। এখানে শুধু কোন ইমেইলটা কোন ভূমিকায় (এডমিন/ইউজার) আছে সেটা ম্যাপ করা আছে। */
+const ROLE_ACCOUNTS = {
+  admin: { email:'iqbal.hossain3034@gmail.com', label:'Iqbal' },
+  user:  { email:'shimulmai1722@gmail.com',      label:'Shimul' }
+};
+function roleForEmail(email){
+  if(!email) return null;
+  const e = email.toLowerCase();
+  if(e === ROLE_ACCOUNTS.admin.email.toLowerCase()) return 'admin';
+  if(e === ROLE_ACCOUNTS.user.email.toLowerCase()) return 'user';
+  return null;
+}
 
 /* ---------------- persistence ----------------
    localStorage ব্যবহার করা হচ্ছে (window.storage নয়), কারণ এই ফাইলটা ডাউনলোড করে
@@ -400,11 +409,31 @@ function initFirebase(){
     return;
   }
   try{
-    firebase.initializeApp(firebaseConfig);
+    if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     fbDb = firebase.firestore();
     fbDocRef = fbDb.collection('app_data').doc('shared_state');
     fbReady = true;
-    listenFirebase();
+    // লগইন/লগআউট অবস্থা বদলালেই এখানে জানা যাবে — Firestore পড়া/লেখা এখন
+    // নিরাপত্তা-নিয়ম অনুযায়ী লগইন করা অবস্থাতেই কেবল সম্ভব
+    let listening = false;
+    firebase.auth().onAuthStateChanged((user)=>{
+      AUTH_CHECKED = true;
+      if(user){
+        const role = roleForEmail(user.email);
+        if(role){
+          AUTHENTICATED = true;
+          CURRENT_ROLE = role;
+          if(!listening){ listening = true; listenFirebase(); }
+        } else {
+          // পরিচিত নয় এমন কোনো ইমেইল দিয়ে সাইন-ইন হয়ে থাকলে (ভুলবশত অন্য অ্যাকাউন্ট) সাথে সাথে সাইন-আউট করে দেওয়া হচ্ছে
+          AUTHENTICATED = false; CURRENT_ROLE = null;
+          firebase.auth().signOut();
+        }
+      } else {
+        AUTHENTICATED = false; CURRENT_ROLE = null;
+      }
+      render();
+    });
   }catch(e){
     console.error('firebase init failed', e);
     FIREBASE_STATUS = 'offline';
@@ -530,6 +559,18 @@ function getMonthEntry(ym){
 let SHOW_FORGOT = false;
 function renderLogin(err){
   const app = document.getElementById('app');
+  if(!AUTH_CHECKED){
+    app.innerHTML = `
+      <div class="letterhead">
+        <div class="seal">উ.স্বা</div>
+        <div>
+          <h1>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার — উপজেলা স্বাস্থ্য ও পরিবার পরিকল্পনা কর্মকর্তার কার্যালয়</h1>
+          <p>মাঠকর্মীদের মাসিক অগ্রিম কর্মসূচি (ওয়েব সংস্করণ)</p>
+        </div>
+      </div>
+      <div class="card" style="max-width:380px;margin:40px auto 0;text-align:center;color:var(--green-deep);">লোড হচ্ছে…</div>`;
+    return;
+  }
   app.innerHTML = `
     <div class="letterhead">
       <div class="seal">উ.স্বা</div>
@@ -539,7 +580,7 @@ function renderLogin(err){
       </div>
     </div>
     ${SHOW_FORGOT ? forgotPasswordHTML(err) : loginFormHTML(err)}`;
-  const el = document.getElementById('loginUser') || document.getElementById('recoveryEmail');
+  const el = document.getElementById('loginEmail') || document.getElementById('recoveryEmail');
   if(el) el.focus();
 }
 function loginFormHTML(err){
@@ -547,7 +588,7 @@ function loginFormHTML(err){
     <div class="card" style="max-width:380px;margin:40px auto 0;">
       <h2 style="text-align:center;">লগইন করুন</h2>
       ${err?`<div style="background:var(--red-soft);color:var(--red);padding:8px 12px;border-radius:8px;font-size:12.5px;margin-bottom:12px;text-align:center;">${esc(err)}</div>`:''}
-      <div class="field"><label>ইউজারনেম</label><input type="text" id="loginUser" autocomplete="username"></div>
+      <div class="field"><label>ইমেইল</label><input type="text" id="loginEmail" autocomplete="username"></div>
       <div class="field">
         <label>পাসওয়ার্ড</label>
         <div style="display:flex;gap:6px;">
@@ -555,7 +596,7 @@ function loginFormHTML(err){
           <button type="button" class="btn btn-outline btn-sm" onclick="togglePassVisibility()">👁</button>
         </div>
       </div>
-      <button class="btn btn-primary" style="width:100%;margin-top:6px;" onclick="doLogin()">প্রবেশ করুন</button>
+      <button class="btn btn-primary" id="loginBtn" style="width:100%;margin-top:6px;" onclick="doLogin()">প্রবেশ করুন</button>
       <p class="hint" style="text-align:center;margin-top:12px;cursor:pointer;color:var(--green-mid);font-weight:600;" onclick="SHOW_FORGOT=true; renderLogin();">পাসওয়ার্ড ভুলে গেছেন?</p>
     </div>`;
 }
@@ -563,47 +604,48 @@ function togglePassVisibility(){
   const el = document.getElementById('loginPass');
   el.type = el.type==='password' ? 'text' : 'password';
 }
-function forgotPasswordHTML(err){
+function forgotPasswordHTML(err, sent){
   return `
     <div class="card" style="max-width:400px;margin:40px auto 0;">
       <h2 style="text-align:center;">পাসওয়ার্ড রিসেট করুন</h2>
-      <p class="hint" style="margin-top:-6px;">নিবন্ধিত দুটি ইমেইলের একটি টাইপ করুন — অ্যাডমিন অথবা ইউজার। মিলে গেলে নতুন পাসওয়ার্ড সেট করতে পারবেন।</p>
-      <p class="hint" style="background:var(--gold-soft);color:var(--gold);padding:8px 10px;border-radius:8px;">⚠️ এই অ্যাপে কোনো সার্ভার নেই বলে সত্যিকারের ইমেইল পাঠানো সম্ভব না। শুধু আপনার নিবন্ধিত ইমেইল যাচাই করে সরাসরি রিসেট করা হয়।</p>
+      <p class="hint" style="margin-top:-6px;">নিবন্ধিত ইমেইল দিন — Firebase থেকে আপনার ইমেইলে একটা পাসওয়ার্ড রিসেট লিংক পাঠানো হবে।</p>
+      ${sent?`<div style="background:var(--green-soft);color:var(--green-deep);padding:8px 12px;border-radius:8px;font-size:12.5px;margin-bottom:8px;text-align:center;">রিসেট লিংক পাঠানো হয়েছে — ইমেইল চেক করুন (স্প্যাম ফোল্ডারও দেখুন)</div>`:''}
       ${err?`<div style="background:var(--red-soft);color:var(--red);padding:8px 12px;border-radius:8px;font-size:12.5px;margin-bottom:8px;text-align:center;">${esc(err)}</div>`:''}
       <div class="field"><label>আপনার ইমেইল</label><input type="text" id="recoveryEmail" placeholder="নিবন্ধিত ইমেইল লিখুন"></div>
-      <div class="field"><label>নতুন পাসওয়ার্ড</label><input type="password" id="recoveryNewPass"></div>
-      <button class="btn btn-primary" style="width:100%;" onclick="doPasswordReset()">পাসওয়ার্ড রিসেট করুন</button>
+      <button class="btn btn-primary" style="width:100%;" onclick="doPasswordReset()">রিসেট লিংক পাঠান</button>
       <p class="hint" style="text-align:center;margin-top:12px;cursor:pointer;color:var(--green-mid);font-weight:600;" onclick="SHOW_FORGOT=false; renderLogin();">← লগইনে ফিরে যান</p>
     </div>`;
 }
-function doPasswordReset(){
-  const email = document.getElementById('recoveryEmail').value.trim().toLowerCase();
-  const newPass = document.getElementById('recoveryNewPass').value;
-  let account = null;
-  if(email === STATE.auth.admin.email.toLowerCase()) account = STATE.auth.admin;
-  else if(email === STATE.auth.user.email.toLowerCase()) account = STATE.auth.user;
-  if(!account){ SHOW_FORGOT=true; renderLogin('এই ইমেইলটি নিবন্ধিত নয়'); return; }
-  if(!newPass){ SHOW_FORGOT=true; renderLogin('নতুন পাসওয়ার্ড দিন'); return; }
-  account.password = newPass;
-  saveState();
-  SHOW_FORGOT = false;
-  toast('পাসওয়ার্ড রিসেট হয়েছে, এখন লগইন করুন');
-  renderLogin();
-}
-function doLogin(){
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-  if(u===STATE.auth.admin.username && p===STATE.auth.admin.password){
-    AUTHENTICATED = true; CURRENT_ROLE = 'admin';
-    render();
-  } else if(u===STATE.auth.user.username && p===STATE.auth.user.password){
-    AUTHENTICATED = true; CURRENT_ROLE = 'user';
-    render();
-  } else {
-    renderLogin('ইউজারনেম বা পাসওয়ার্ড সঠিক নয়');
+async function doPasswordReset(){
+  const email = document.getElementById('recoveryEmail').value.trim();
+  if(!email){ renderLogin('ইমেইল দিন'); return; }
+  try{
+    await firebase.auth().sendPasswordResetEmail(email);
+    SHOW_FORGOT = true;
+    document.getElementById('app').innerHTML = `
+      <div class="letterhead">
+        <div class="seal">উ.স্বা</div>
+        <div><h1>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার — উপজেলা স্বাস্থ্য ও পরিবার পরিকল্পনা কর্মকর্তার কার্যালয়</h1><p>মাঠকর্মীদের মাসিক অগ্রিম কর্মসূচি (ওয়েব সংস্করণ)</p></div>
+      </div>${forgotPasswordHTML(null, true)}`;
+  }catch(e){
+    console.error(e);
+    renderLogin('ইমেইল পাঠাতে সমস্যা হয়েছে — ইমেইলটি সঠিক কিনা দেখুন');
   }
 }
-function doLogout(){ AUTHENTICATED = false; CURRENT_ROLE=null; SHOW_FORGOT=false; renderLogin(); }
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const btn = document.getElementById('loginBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'যাচাই করা হচ্ছে…'; }
+  try{
+    await firebase.auth().signInWithEmailAndPassword(email, pass);
+    // সফল হলে onAuthStateChanged নিজে থেকেই AUTHENTICATED/CURRENT_ROLE সেট করে render() করবে
+  }catch(e){
+    console.error(e);
+    renderLogin('ইমেইল বা পাসওয়ার্ড সঠিক নয়');
+  }
+}
+function doLogout(){ firebase.auth().signOut(); }
 
 /* ================= রেন্ডার ফ্রেমওয়ার্ক ================= */
 function render(){
@@ -623,7 +665,7 @@ function render(){
       ${tabBtn('holidays','ছুটির তালিকা')}
       ${tabBtn('history','ইতিহাস ও সার্চ')}
       <span class="tab-btn" style="margin-left:auto;background:var(--gold-soft);color:var(--gold);border-color:var(--gold);cursor:default;">
-        ${CURRENT_ROLE==='admin'?'👑 এডমিন':'👤 ইউজার'}: ${esc(CURRENT_ROLE==='admin'?STATE.auth.admin.username:STATE.auth.user.username)}
+        ${CURRENT_ROLE==='admin'?'👑 এডমিন':'👤 ইউজার'}: ${esc(ROLE_ACCOUNTS[CURRENT_ROLE].label)}
       </span>
       <button class="tab-btn" style="color:var(--red);" onclick="doLogout()">🔒 লগআউট</button>
     </div>
@@ -1108,44 +1150,15 @@ function setupTabHTML(){
 }
 function updateWorker(field,val){ STATE.worker[field]=val; saveState(); }
 function adminLoginSettingsHTML(){
-  const a = STATE.auth.admin, u = STATE.auth.user;
   return `
   <div class="card">
     <h2>লগইন তথ্য (শুধু এডমিন দেখতে পারবেন)</h2>
-    <p class="hint" style="margin-top:-6px;margin-bottom:12px;">এখানে দুইটা আলাদা অ্যাকাউন্ট আছে — এডমিন ও ইউজার। প্রতিটির ইউজারনেম ও রিকভারি ইমেইল পরিবর্তন করা যায়, পাসওয়ার্ড শুধু নতুন করে সেট করা যায় (দেখা যায় না)।</p>
-    <div class="grid" style="margin-bottom:10px;">
-      <div class="field"><label>👑 এডমিন ইউজারনেম</label><input type="text" value="${esc(a.username)}" oninput="updateAuth('admin','username',this.value)"></div>
-      <div class="field">
-        <label>এডমিন পাসওয়ার্ড বদলান</label>
-        <div style="display:flex;gap:6px;">
-          <input type="password" id="setupNewPassAdmin" placeholder="নতুন পাসওয়ার্ড" style="flex:1;">
-          <button class="btn btn-outline btn-sm" onclick="changePasswordFromSetup('admin')">বদলান</button>
-        </div>
-      </div>
-      <div class="field"><label>এডমিন রিকভারি ইমেইল</label><input type="text" value="${esc(a.email)}" oninput="updateAuth('admin','email',this.value)"></div>
-    </div>
+    <p class="hint" style="margin-top:-6px;margin-bottom:12px;">অ্যাকাউন্টের ইমেইল ও পাসওয়ার্ড এখন Firebase Authentication দিয়ে নিরাপদে সংরক্ষিত থাকে (এই অ্যাপের ডেটাবেজে নয়)। পাসওয়ার্ড বদলাতে চাইলে লগইন পেজের "পাসওয়ার্ড ভুলে গেছেন?" থেকে রিসেট লিংক পাঠান, অথবা Firebase Console → Authentication → Users থেকে সরাসরি বদলান।</p>
     <div class="grid">
-      <div class="field"><label>👤 ইউজার ইউজারনেম</label><input type="text" value="${esc(u.username)}" oninput="updateAuth('user','username',this.value)"></div>
-      <div class="field">
-        <label>ইউজার পাসওয়ার্ড বদলান</label>
-        <div style="display:flex;gap:6px;">
-          <input type="password" id="setupNewPassUser" placeholder="নতুন পাসওয়ার্ড" style="flex:1;">
-          <button class="btn btn-outline btn-sm" onclick="changePasswordFromSetup('user')">বদলান</button>
-        </div>
-      </div>
-      <div class="field"><label>ইউজার রিকভারি ইমেইল</label><input type="text" value="${esc(u.email)}" oninput="updateAuth('user','email',this.value)"></div>
+      <div class="field"><label>👑 এডমিন ইমেইল</label><input type="text" value="${esc(ROLE_ACCOUNTS.admin.email)}" disabled></div>
+      <div class="field"><label>👤 ইউজার ইমেইল</label><input type="text" value="${esc(ROLE_ACCOUNTS.user.email)}" disabled></div>
     </div>
   </div>`;
-}
-function updateAuth(role,field,val){ STATE.auth[role][field]=val; saveState(); }
-function changePasswordFromSetup(role){
-  const inputId = role==='admin' ? 'setupNewPassAdmin' : 'setupNewPassUser';
-  const v = document.getElementById(inputId).value;
-  if(!v){ toast('নতুন পাসওয়ার্ড লিখুন'); return; }
-  STATE.auth[role].password = v;
-  saveState();
-  document.getElementById(inputId).value='';
-  toast((role==='admin'?'এডমিন':'ইউজার')+' পাসওয়ার্ড বদলানো হয়েছে ✔');
 }
 function updateCenter(id,field,val){
   const r = STATE.centerRows.find(x=>x.id===id);
