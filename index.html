@@ -138,6 +138,10 @@
     .report-note{font-size:9px;margin:8px 0 12px;}
     .report-sign{font-size:10.5px;line-height:1.5;}
     table{font-size:12.5px;table-layout:fixed;width:100%;border:1px solid #000;}
+    /* স্ক্রিনের জন্য নির্ধারিত min-width গুলো প্রিন্টে বাতিল — নাহলে <colgroup>-এর নির্দিষ্ট
+       শতাংশ-ভিত্তিক প্রস্থের সাথে সংঘর্ষ বেঁধে কলাম একে অপরের উপর উঠে যায় (ওভারল্যাপ) */
+    .select-col,.remark-col,.village-col,.owner-col{min-width:0!important;}
+    td.remark-col{text-align:center;}
     .table-wrap{border:1.25px solid #000;padding:2px;}
     thead th{font-size:9px;font-weight:400;line-height:1.15;padding:3px 2px;background:#e8e8e8!important;color:#000!important;}
     th,td{padding:3px 4px;line-height:1.25;word-break:break-word;border:0.5px solid #555;vertical-align:middle;}
@@ -171,6 +175,8 @@
   .pdf-export-mode .report-note{font-size:9px;margin:8px 0 12px;}
   .pdf-export-mode .report-sign{font-size:10.5px;line-height:1.5;}
   .pdf-export-mode table{font-size:12.5px;table-layout:fixed;width:100%;border:1px solid #000;}
+  .pdf-export-mode .select-col,.pdf-export-mode .remark-col,.pdf-export-mode .village-col,.pdf-export-mode .owner-col{min-width:0!important;}
+  .pdf-export-mode td.remark-col{text-align:center;}
   .pdf-export-mode .table-wrap{border:1.25px solid #000;padding:2px;}
   .pdf-export-mode thead th{font-size:9px;font-weight:400;line-height:1.15;padding:3px 2px;background:#e8e8e8!important;color:#000!important;}
   .pdf-export-mode th,.pdf-export-mode td{padding:3px 4px;line-height:1.25;word-break:break-word;border:0.15px solid #000;vertical-align:middle;}
@@ -753,8 +759,8 @@ function entryTabHTML(){
         <col style="width:4%">    <!-- নতুন -->
         <col style="width:4%">    <!-- বিলুপ্ত -->
         <col style="width:4%">    <!-- মোট -->
-        <col style="width:3.5%">  <!-- ব্লক নং -->
-        <col style="width:12.5%"> <!-- টিকাদান কেন্দ্রের মালিকের নাম -->
+        <col style="width:5%">  <!-- ব্লক নং -->
+        <col style="width:11%"> <!-- টিকাদান কেন্দ্রের মালিকের নাম -->
         <col style="width:5.5%">  <!-- ভ্রমণের উদ্দেশ্য -->
         <col style="width:12%">   <!-- মন্তব্য -->
         <col class="no-print" style="width:30%"> <!-- নির্বাচন — প্রিন্টে সম্পূর্ণ বাদ যায়, স্ক্রিনে বড় রাখা হয়েছে যাতে ড্রপডাউনের পুরো লেখা পড়া যায় -->
