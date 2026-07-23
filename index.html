@@ -419,6 +419,8 @@ function initFirebase(){
   }
   try{
     if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    // লগইন শুধু এই ব্রাউজার ট্যাবের জন্যই মনে রাখা হবে — ট্যাব/ব্রাউজার বন্ধ করলেই স্বয়ংক্রিয়ভাবে লগআউট হয়ে যাবে
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(e=>console.error('persistence set failed', e));
     fbDb = firebase.firestore();
     fbDocRef = fbDb.collection('app_data').doc('shared_state');
     fbReady = true;
