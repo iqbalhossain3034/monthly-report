@@ -81,7 +81,9 @@
   thead th{background:var(--green-soft);color:var(--green-deep);font-weight:700;font-size:11px;}
   .select-col select{font-size:11.5px;width:100%;}
   .select-col{min-width:90px;}
-  .remark-col{min-width:230px;}
+  .remark-col{min-width:150px;}
+  .village-col{min-width:105px;}
+  .owner-col{min-width:150px;}
   tbody tr:nth-child(even){background:#fbf9f2;}
   tbody tr.off-day{background:#c7c7c2!important;}
   tbody tr.off-day td{color:#3a3a36;}
@@ -661,13 +663,13 @@ function entryTabHTML(){
       <td>${info?(esc(info.row.mouzaName)||'<span class="muted">?</span>'):dash}</td>
       <td>${info?esc(w.union):dash}</td>
       <td>${info?esc(w.wardNo):dash}</td>
-      <td>${info?(esc(info.row.villageName)||'<span class="muted">?</span>'):dash}</td>
+      <td class="village-col">${info?(esc(info.row.villageName)||'<span class="muted">?</span>'):dash}</td>
       <td>${info?`${bnNum(info.row.houseFrom)}-${bnNum(info.row.houseTo)}`:dash}</td>
       <td>${info?bnNum(info.row.newC||0):dash}</td>
       <td>${info?bnNum(info.row.cancelC||0):dash}</td>
       <td>${info?bnNum(info.total):dash}</td>
       <td>${info?esc(info.row.blockNo):(row.code==='সি সি সেবা'?'—':dash)}</td>
-      <td>${info?(esc(info.row.ownerName)||'<span class="muted">?</span>'):(row.code==='সি সি সেবা'?'সি সি সেবা কেন্দ্র':dash)}</td>
+      <td class="owner-col">${info?(esc(info.row.ownerName)||'<span class="muted">?</span>'):(row.code==='সি সি সেবা'?'সি সি সেবা কেন্দ্র':dash)}</td>
       <td>${info?esc(info.row.purpose):(row.code==='সি সি সেবা'?'সি সি সেবা':dash)}</td>
       <td class="remark-col"><input type="text" class="no-print" value="${esc(row.remark)}" placeholder="—" oninput="updateRow(${idx},'remark',this.value)"><span class="print-only">${row.remark?esc(row.remark):'—'}</span></td>
       <td class="no-print select-col">
