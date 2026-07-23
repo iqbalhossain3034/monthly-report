@@ -86,6 +86,15 @@
   .village-col{min-width:105px;}
   .owner-col{min-width:190px;}
   .block-col{min-width:44px;white-space:nowrap;}
+
+  /* ================= মোবাইল ভিউ =================
+     ছোট স্ক্রিনে (৭৬৮px-এর নিচে) শুধু তারিখ, বার, আর ব্লক নং থেকে নির্বাচন পর্যন্ত কলাম দেখানো হয়;
+     বাকি কলাম (মৌজা, ইউনিয়ন, ওয়ার্ড নং, গ্রামের নাম, পরিদর্শিত বাড়ি) লুকানো থাকে।
+     স্ক্রল করলে টেবিলের হেডার উপরে স্থিতিশীল (sticky) থাকে — শুধু মোবাইলেই, ডেস্কটপে স্বাভাবিক থাকে। */
+  @media screen and (max-width:768px){
+    .mobile-hide{display:none!important;}
+    .report-sheet thead th{position:sticky;top:0;z-index:5;}
+  }
   tbody tr:nth-child(even){background:#fbf9f2;}
   tbody tr.off-day{background:#c7c7c2!important;}
   tbody tr.off-day td{color:#3a3a36;}
@@ -710,15 +719,15 @@ function entryTabHTML(){
     <tr class="${offRow?'off-day':''} ${isActive?'active-row':''}">
       <td>${bnNum(d.getDate())}-${bnNum(m)}-${bnNum(y)}</td>
       <td>${dayName}</td>
-      <td>${info?esc(info.row.mouzaNo):dash}</td>
-      <td>${info?(esc(info.row.mouzaName)||'<span class="muted">?</span>'):dash}</td>
-      <td>${info?esc(w.union):dash}</td>
-      <td>${info?esc(w.wardNo):dash}</td>
-      <td class="village-col">${info?(esc(info.row.villageName)||'<span class="muted">?</span>'):dash}</td>
-      <td>${info?`${bnNum(info.row.houseFrom)}-${bnNum(info.row.houseTo)}`:dash}</td>
-      <td>${info?bnNum(info.row.newC||0):dash}</td>
-      <td>${info?bnNum(info.row.cancelC||0):dash}</td>
-      <td>${info?bnNum(info.total):dash}</td>
+      <td class="mobile-hide">${info?esc(info.row.mouzaNo):dash}</td>
+      <td class="mobile-hide">${info?(esc(info.row.mouzaName)||'<span class="muted">?</span>'):dash}</td>
+      <td class="mobile-hide">${info?esc(w.union):dash}</td>
+      <td class="mobile-hide">${info?esc(w.wardNo):dash}</td>
+      <td class="village-col mobile-hide">${info?(esc(info.row.villageName)||'<span class="muted">?</span>'):dash}</td>
+      <td class="mobile-hide">${info?`${bnNum(info.row.houseFrom)}-${bnNum(info.row.houseTo)}`:dash}</td>
+      <td class="mobile-hide">${info?bnNum(info.row.newC||0):dash}</td>
+      <td class="mobile-hide">${info?bnNum(info.row.cancelC||0):dash}</td>
+      <td class="mobile-hide">${info?bnNum(info.total):dash}</td>
       <td class="block-col">${info?esc(info.row.blockNo):(row.code==='সি সি সেবা'?'—':dash)}</td>
       <td class="owner-col">${info?(esc(info.row.ownerName)||'<span class="muted">?</span>'):(row.code==='সি সি সেবা'?'সি সি সেবা কেন্দ্র':dash)}</td>
       <td>${info?esc(info.row.purpose):(row.code==='সি সি সেবা'?'সি সি সেবা':dash)}</td>
@@ -812,16 +821,16 @@ function entryTabHTML(){
       </colgroup>
       <thead>
         <tr>
-          <th rowspan="2">তারিখ</th><th rowspan="2">বার</th><th colspan="2">মৌজা</th>
-          <th rowspan="2">ইউনিয়ন</th><th rowspan="2">ওয়ার্ড নং</th>
-          <th rowspan="2">গ্রামের নাম</th><th colspan="4">পরিদর্শিত বাড়ি</th>
+          <th rowspan="2">তারিখ</th><th rowspan="2">বার</th><th colspan="2" class="mobile-hide">মৌজা</th>
+          <th rowspan="2" class="mobile-hide">ইউনিয়ন</th><th rowspan="2" class="mobile-hide">ওয়ার্ড নং</th>
+          <th rowspan="2" class="mobile-hide">গ্রামের নাম</th><th colspan="4" class="mobile-hide">পরিদর্শিত বাড়ি</th>
           <th rowspan="2">ব্লক নং</th><th rowspan="2">টিকাদান কেন্দ্রের<br>মালিকের নাম</th>
           <th rowspan="2">ভ্রমণের উদ্দেশ্য</th><th rowspan="2">মন্তব্য</th>
           <th rowspan="2" class="no-print select-col">নির্বাচন<br><span style="font-weight:400;font-size:9.5px;">(প্রিন্ট হবে না)</span></th>
         </tr>
         <tr>
-          <th>নং</th><th>নাম</th>
-          <th>হইতে-পর্যন্ত</th><th>নতুন</th><th>বিলুপ্ত</th><th>মোট</th>
+          <th class="mobile-hide">নং</th><th class="mobile-hide">নাম</th>
+          <th class="mobile-hide">হইতে-পর্যন্ত</th><th class="mobile-hide">নতুন</th><th class="mobile-hide">বিলুপ্ত</th><th class="mobile-hide">মোট</th>
         </tr>
       </thead>
       <tbody>${rowsHTML}</tbody>
