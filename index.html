@@ -763,8 +763,8 @@ function entryTabHTML(){
         <col style="width:4%">    <!-- বিলুপ্ত -->
         <col style="width:4%">    <!-- মোট -->
         <col style="width:5%">  <!-- ব্লক নং -->
-        <col style="width:11%"> <!-- টিকাদান কেন্দ্রের মালিকের নাম -->
-        <col style="width:5.5%">  <!-- ভ্রমণের উদ্দেশ্য -->
+        <col style="width:12.5%"> <!-- টিকাদান কেন্দ্রের মালিকের নাম -->
+        <col style="width:4%">  <!-- ভ্রমণের উদ্দেশ্য -->
         <col style="width:12%">   <!-- মন্তব্য -->
         <col class="no-print" style="width:30%"> <!-- নির্বাচন — প্রিন্টে সম্পূর্ণ বাদ যায়, স্ক্রিনে বড় রাখা হয়েছে যাতে ড্রপডাউনের পুরো লেখা পড়া যায় -->
       </colgroup>
@@ -852,7 +852,7 @@ function autofitCells(root){
   const rows = Array.from(root.querySelectorAll('table tbody tr'));
   const mainCellsByRow = rows.map(row=>Array.from(row.querySelectorAll('td:not(.select-col)')).slice(0,14));
   const allMainCells = mainCellsByRow.flat();
-  const MAIN_MAX = 12.5, MAIN_MIN = 7.5;
+  const MAIN_MAX = 12.5, MAIN_MIN = 6.5;
   let size = MAIN_MAX;
   allMainCells.forEach(td=>{ td.style.whiteSpace='nowrap'; td.style.fontSize=size+'px'; });
   let guard = 0;
@@ -861,12 +861,18 @@ function autofitCells(root){
     allMainCells.forEach(td=>{ td.style.fontSize = size+'px'; });
     guard++;
   }
+  // নিরাপত্তা: সর্বনিম্ন ফন্ট সাইজেও যদি কোনো ঘরের লেখা এখনও না আঁটে (যেমন লম্বা মালিকের নাম),
+  // সেটিকে জোর করে এক লাইনে না রেখে দুই লাইনে wrap করতে দেওয়া হচ্ছে — নাহলে পাশের কলামের উপর
+  // লেখা উপচে পড়ে (ওভারল্যাপ) দেখায়
+  allMainCells.forEach(td=>{
+    if(td.scrollWidth > td.clientWidth){ td.style.whiteSpace='normal'; }
+  });
   // ধাপ ২: মন্তব্য কলাম — একই অভিন্ন সাইজ দিয়ে চেষ্টা; শুধু যে নির্দিষ্ট সারিতে না আঁটবে,
   // কেবল সেই একটা ঘরই আলাদাভাবে আরেকটু ছোট হবে বা প্রয়োজনে দুই লাইনে যাবে
   const results = [];
   rows.forEach((row,ri)=>{
     const cells = Array.from(row.querySelectorAll('td:not(.select-col)'));
-    const rowResult = mainCellsByRow[ri].map(()=>({size, wrapMode:'nowrap'}));
+    const rowResult = mainCellsByRow[ri].map(td=>({size, wrapMode: td.style.whiteSpace==='normal' ? 'normal' : 'nowrap'}));
     const remarkTd = cells[14];
     if(remarkTd){
       let rSize = size;
