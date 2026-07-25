@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>মাসিক অগ্রিম কর্মসূচি</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=Noto+Serif+Bengali:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -93,14 +96,22 @@
      স্ক্রল করলে টেবিলের হেডার উপরে স্থিতিশীল (sticky) থাকে — শুধু মোবাইলেই, ডেস্কটপে স্বাভাবিক থাকে। */
   @media screen and (max-width:768px){
     .mobile-hide{display:none!important;}
+    .mobile-hide-col{visibility:collapse;}
     .report-sheet thead th{position:sticky;top:0;z-index:5;}
-    .report-sheet table{font-size:10.5px;}
+    .report-sheet table{font-size:10.5px;table-layout:fixed;}
     .report-sheet th,.report-sheet td{padding:4px 3px;}
-    .select-col{min-width:62px;}
+    .report-sheet colgroup col:nth-child(1){width:12%!important;}
+    .report-sheet colgroup col:nth-child(2){width:9%!important;}
+    .report-sheet colgroup col:nth-child(12){width:9%!important;}
+    .report-sheet colgroup col:nth-child(13){width:20%!important;}
+    .report-sheet colgroup col:nth-child(14){width:9%!important;}
+    .report-sheet colgroup col:nth-child(15){width:17%!important;}
+    .report-sheet colgroup col:nth-child(16){width:24%!important;}
+    .select-col{min-width:0;}
     .select-col select{font-size:9.5px;}
-    .remark-col{min-width:92px;}
-    .owner-col{min-width:82px;}
-    .block-col{min-width:32px;}
+    .remark-col{min-width:0;}
+    .owner-col{min-width:0;}
+    .block-col{min-width:0;}
   }
   tbody tr:nth-child(even){background:#fbf9f2;}
   tbody tr.off-day{background:#c7c7c2!important;}
@@ -134,7 +145,7 @@
   .select-col{background:#f1efe4;border-left:2px dashed #b8ab7e!important;}
   thead th.select-col{background:#e9e2c9;color:#7a6f4a;}
   .report-head{margin-bottom:14px;}
-  .report-head-title{font-family:'Noto Serif Bengali',serif;font-size:14px;line-height:1.6;text-align:center;}
+  .report-head-title{font-family:'Noto Serif Bengali',serif;font-size:14px;line-height:1.6;text-align:center;word-break:keep-all;overflow-wrap:normal;white-space:normal;hyphens:none;}
   .report-head-month{font-size:13px;display:inline-block;margin-top:4px;}
   .report-worker{display:flex;justify-content:space-between;gap:20px;font-size:13px;margin-bottom:14px;line-height:1.8;flex-wrap:wrap;}
   .report-note{font-size:11.5px;color:#5a5648;margin:14px 0 20px;}
@@ -813,15 +824,15 @@ function entryTabHTML(){
       <colgroup>
         <col style="width:8.5%">  <!-- তারিখ -->
         <col style="width:6.5%">  <!-- বার -->
-        <col style="width:4.5%">  <!-- মৌজা নং -->
-        <col style="width:7.5%">  <!-- মৌজা নাম -->
-        <col style="width:6.5%">  <!-- ইউনিয়ন -->
-        <col style="width:5%">    <!-- ওয়ার্ড নং -->
-        <col style="width:8%">    <!-- গ্রামের নাম -->
-        <col style="width:8%">    <!-- হইতে-পর্যন্ত -->
-        <col style="width:4%">    <!-- নতুন -->
-        <col style="width:4%">    <!-- বিলুপ্ত -->
-        <col style="width:4%">    <!-- মোট -->
+        <col class="mobile-hide-col" style="width:4.5%">  <!-- মৌজা নং -->
+        <col class="mobile-hide-col" style="width:7.5%">  <!-- মৌজা নাম -->
+        <col class="mobile-hide-col" style="width:6.5%">  <!-- ইউনিয়ন -->
+        <col class="mobile-hide-col" style="width:5%">    <!-- ওয়ার্ড নং -->
+        <col class="mobile-hide-col" style="width:8%">    <!-- গ্রামের নাম -->
+        <col class="mobile-hide-col" style="width:8%">    <!-- হইতে-পর্যন্ত -->
+        <col class="mobile-hide-col" style="width:4%">    <!-- নতুন -->
+        <col class="mobile-hide-col" style="width:4%">    <!-- বিলুপ্ত -->
+        <col class="mobile-hide-col" style="width:4%">    <!-- মোট -->
         <col style="width:5%">  <!-- ব্লক নং -->
         <col style="width:12%"> <!-- টিকাদান কেন্দ্রের মালিকের নাম -->
         <col style="width:4.5%">  <!-- ভ্রমণের উদ্দেশ্য -->
