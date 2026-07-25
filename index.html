@@ -221,6 +221,33 @@
   .pdf-export-mode tbody td{font-size:var(--fit-size, 12.5px);white-space:var(--fit-wrap, nowrap);}
   .pdf-export-mode tbody tr{height:var(--row-h, auto);}
   /* কলাম-প্রস্থ এখন <colgroup>-এ নির্ধারিত */
+  /* ================= মোবাইলে PDF ওভারল্যাপ বাগ ফিক্স =================
+     সমস্যা: autofitCells()/stretchRowsToFillPage() একটা অফস্ক্রিন ক্লোনের (position:fixed) উপর মাপ নেয়,
+     কিন্তু @media screen (max-width:768px) নিয়মটি ভিউপোর্টের প্রস্থ অনুযায়ী সবসময় সক্রিয় থাকে —
+     ক্লোনের নিজের width:198mm সেট করা সত্ত্বেও। ফলে মোবাইল ফোনে মাপার সময় "মোবাইল ভিউ"-এর জন্য
+     লুকানো কলাম (mobile-hide) ও সংকুচিত কলাম-প্রস্থ (!important) ব্যবহার হয়ে যেত — যেটা আসল
+     প্রিন্ট/PDF-এর পূর্ণ ১৫-কলাম লেআউট থেকে সম্পূর্ণ ভিন্ন। এর ফলে ভুল ফন্ট-সাইজ/সারি-উচ্চতা হিসাব
+     হয়ে আসল প্রিন্টে লেখা একে অপরের উপর উঠে যেত (ওভারল্যাপ)। নিচের নিয়মগুলো .pdf-export-mode
+     ক্লোনের ভেতরে মোবাইল-ভিউয়ের প্রভাব সম্পূর্ণ বাতিল করে সবসময় ডেস্কটপ/প্রিন্ট লেআউট বাধ্য করছে। */
+  .pdf-export-mode col.mobile-hide{display:table-column!important;}
+  .pdf-export-mode td.mobile-hide,.pdf-export-mode th.mobile-hide{display:table-cell!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(1){width:8.5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(2){width:6.5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(3){width:4.5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(4){width:7.5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(5){width:6.5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(6){width:5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(7){width:8%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(8){width:8%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(9){width:4%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(10){width:4%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(11){width:4%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(12){width:5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(13){width:12%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(14){width:4.5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(15){width:12%!important;}
+  .pdf-export-mode .report-sheet table{font-size:12.5px!important;table-layout:fixed!important;}
+  .pdf-export-mode .report-sheet th,.pdf-export-mode .report-sheet td{padding:3px 4px!important;}
   @media (max-width:640px){
     .letterhead{flex-direction:column;text-align:center;}
     table{font-size:11px;}
