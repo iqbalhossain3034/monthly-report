@@ -253,6 +253,7 @@
     table{font-size:11px;}
   }
 </style>
+<base target="_blank">
 </head>
 <body>
 <div class="app" id="app"></div>
@@ -779,11 +780,12 @@ function entryTabHTML(){
       <td class="owner-col">${info?(esc(info.row.ownerName)||'<span class="muted">?</span>'):(row.code==='সি সি সেবা'?'সি সি সেবা কেন্দ্র':dash)}</td>
       <td>${info?esc(info.row.purpose):(row.code==='সি সি সেবা'?'সি সি সেবা':dash)}</td>
       <td class="remark-col"><input type="text" class="no-print" value="${esc(row.remark)}" placeholder="—" oninput="updateRow(${idx},'remark',this.value)"><span class="print-only">${row.remark?esc(row.remark):'—'}</span></td>
-      <td class="no-print select-col">
-        <select onchange="updateRow(${idx},'code',this.value)">
+      <td class="select-col">
+        <select class="no-print" onchange="updateRow(${idx},'code',this.value)">
           <option value="">--নির্বাচন--</option>
           ${rowOpts.map(o=>`<option value="${esc(o)}" ${row.code===o?'selected':''}>${esc(o)}</option>`).join('')}
         </select>
+        <span class="print-only">${row.code && row.code !== '----' ? esc(row.code) : '<span class="muted">—</span>'}</span>
       </td>
     </tr>`;
   }).join('');
@@ -864,7 +866,7 @@ function entryTabHTML(){
         <col style="width:12%"> <!-- টিকাদান কেন্দ্রের মালিকের নাম -->
         <col style="width:4.5%">  <!-- ভ্রমণের উদ্দেশ্য -->
         <col style="width:12%">   <!-- মন্তব্য -->
-        <col class="no-print" style="width:30%"> <!-- নির্বাচন — প্রিন্টে সম্পূর্ণ বাদ যায়, স্ক্রিনে বড় রাখা হয়েছে যাতে ড্রপডাউনের পুরো লেখা পড়া যায় -->
+        <col style="width:30%"> <!-- নির্বাচন — স্ক্রিনে বড় রাখা হয়েছে যাতে ড্রপডাউনের পুরো লেখা পড়া যায়, প্রিন্টে span.print-only দেখাবে -->
       </colgroup>
       <thead>
         <tr>
@@ -936,10 +938,11 @@ function buildOffscreenClone(){
   const clone = sheet.cloneNode(true);
   clone.removeAttribute('id');
   clone.style.width = '198mm';
+  clone.style.minWidth = '198mm';
   clone.style.maxWidth = '198mm';
   const wrap = document.createElement('div');
   wrap.className = 'pdf-export-mode';
-  wrap.style.cssText = 'position:fixed;top:0;left:-10000px;background:#fff;pointer-events:none;';
+  wrap.style.cssText = 'position:absolute;top:0;left:0;background:#fff;visibility:hidden;pointer-events:none;z-index:-1;overflow:hidden;';
   wrap.appendChild(clone);
   document.body.appendChild(wrap);
   return { wrap, clone };
@@ -948,6 +951,13 @@ function autofitCells(root){
   // ধাপ ১: কলাম ১-১৪ এর সব ঘরের জন্য একটামাত্র অভিন্ন ফন্ট সাইজ বের করা (রো-ভিত্তিতে আলাদা নয়) —
   // এতে প্রতিটি সাধারণ সারির উচ্চতা সমান থাকে, কোনো সারি বাকিগুলোর চেয়ে চিকন/মোটা দেখায় না
   const rows = Array.from(root.querySelectorAll('table tbody tr'));
+  if(rows.length === 0) return [];
+  // নিরাপত্তা: মোবাইলে ক্লোন সঠিকভাবে রেন্ডার না হলে (width=0) ডিফল্ট ফেলে দিন
+  const sampleTd = rows[0].querySelector('td');
+  if(!sampleTd || sampleTd.clientWidth === 0 || sampleTd.getBoundingClientRect().width === 0){
+    console.warn('autofitCells: offscreen clone not rendered properly, skipping autofit');
+    return [];
+  }
   const mainCellsByRow = rows.map(row=>Array.from(row.querySelectorAll('td:not(.select-col)')).slice(0,14));
   const allMainCells = mainCellsByRow.flat();
   const MAIN_MAX = 12.5, MAIN_MIN = 6.5;
@@ -1024,6 +1034,12 @@ function stretchRowsToFillPage(root){
   const tbody = root.querySelector('table tbody');
   const thead = root.querySelector('table thead');
   if(!table || !tbody) return [];
+  // নিরাপত্তা: মোবাইলে ক্লোন রেন্ডার না হলে বাদ দিন
+  const firstRow = tbody.querySelector('tr');
+  if(!firstRow || firstRow.getBoundingClientRect().height === 0){
+    console.warn('stretchRows: clone rows have zero height, skipping stretch');
+    return [];
+  }
 
   // ব্রাউজারের mm→px রূপান্তর যাচাই করতে একটা অস্থায়ী ক্যালিব্রেশন এলিমেন্ট ব্যবহার হচ্ছে
   const calib = document.createElement('div');
@@ -1095,10 +1111,16 @@ async function printReport(){
   const off = buildOffscreenClone();
   if(off){
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    // অফস্ক্রিন ক্লোনের রেন্ডার হওয়ার জন্য আরেকটু সময় দিন (মোবাইলে font/layout লোড slower)
+    await new Promise(r=>setTimeout(r, 300));
     const results = autofitCells(off.clone);
-    applyFitResultsToLiveSheet(results);
-    const heights = stretchRowsToFillPage(off.clone);
-    applyRowHeightsToLiveSheet(heights);
+    if(results && results.length > 0){
+      applyFitResultsToLiveSheet(results);
+      const heights = stretchRowsToFillPage(off.clone);
+      if(heights && heights.length > 0){
+        applyRowHeightsToLiveSheet(heights);
+      }
+    }
     off.wrap.remove();
   }
   let restored = false;
