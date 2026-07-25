@@ -253,7 +253,6 @@
     table{font-size:11px;}
   }
 </style>
-<base target="_blank">
 </head>
 <body>
 <div class="app" id="app"></div>
@@ -780,12 +779,11 @@ function entryTabHTML(){
       <td class="owner-col">${info?(esc(info.row.ownerName)||'<span class="muted">?</span>'):(row.code==='সি সি সেবা'?'সি সি সেবা কেন্দ্র':dash)}</td>
       <td>${info?esc(info.row.purpose):(row.code==='সি সি সেবা'?'সি সি সেবা':dash)}</td>
       <td class="remark-col"><input type="text" class="no-print" value="${esc(row.remark)}" placeholder="—" oninput="updateRow(${idx},'remark',this.value)"><span class="print-only">${row.remark?esc(row.remark):'—'}</span></td>
-      <td class="select-col">
-        <select class="no-print" onchange="updateRow(${idx},'code',this.value)">
+      <td class="no-print select-col">
+        <select onchange="updateRow(${idx},'code',this.value)">
           <option value="">--নির্বাচন--</option>
           ${rowOpts.map(o=>`<option value="${esc(o)}" ${row.code===o?'selected':''}>${esc(o)}</option>`).join('')}
         </select>
-        <span class="print-only">${row.code && row.code !== '----' ? esc(row.code) : '<span class="muted">—</span>'}</span>
       </td>
     </tr>`;
   }).join('');
@@ -866,7 +864,7 @@ function entryTabHTML(){
         <col style="width:12%"> <!-- টিকাদান কেন্দ্রের মালিকের নাম -->
         <col style="width:4.5%">  <!-- ভ্রমণের উদ্দেশ্য -->
         <col style="width:12%">   <!-- মন্তব্য -->
-        <col style="width:30%"> <!-- নির্বাচন — স্ক্রিনে বড় রাখা হয়েছে যাতে ড্রপডাউনের পুরো লেখা পড়া যায়, প্রিন্টে span.print-only দেখাবে -->
+        <col class="no-print" style="width:30%"> <!-- নির্বাচন — প্রিন্টে সম্পূর্ণ বাদ যায়, স্ক্রিনে বড় রাখা হয়েছে যাতে ড্রপডাউনের পুরো লেখা পড়া যায় -->
       </colgroup>
       <thead>
         <tr>
@@ -942,6 +940,8 @@ function buildOffscreenClone(){
   clone.style.maxWidth = '198mm';
   const wrap = document.createElement('div');
   wrap.className = 'pdf-export-mode';
+  // মোবাইলে position:fixed + left:-10000px এলিমেন্টকে রেন্ডারই করে না বা ভুল মাপ দেয়,
+  // তাই visibility:hidden দিয়ে দৃশ্যমান না রেখেও সঠিকভাবে রেন্ডার করানো হচ্ছে
   wrap.style.cssText = 'position:absolute;top:0;left:0;background:#fff;visibility:hidden;pointer-events:none;z-index:-1;overflow:hidden;';
   wrap.appendChild(clone);
   document.body.appendChild(wrap);
