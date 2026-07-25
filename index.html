@@ -936,13 +936,10 @@ function buildOffscreenClone(){
   const clone = sheet.cloneNode(true);
   clone.removeAttribute('id');
   clone.style.width = '198mm';
-  clone.style.minWidth = '198mm';
   clone.style.maxWidth = '198mm';
   const wrap = document.createElement('div');
   wrap.className = 'pdf-export-mode';
-  // মোবাইলে position:fixed + left:-10000px এলিমেন্টকে রেন্ডারই করে না বা ভুল মাপ দেয়,
-  // তাই visibility:hidden দিয়ে দৃশ্যমান না রেখেও সঠিকভাবে রেন্ডার করানো হচ্ছে
-  wrap.style.cssText = 'position:absolute;top:0;left:0;background:#fff;visibility:hidden;pointer-events:none;z-index:-1;overflow:hidden;';
+  wrap.style.cssText = 'position:fixed;top:0;left:-10000px;background:#fff;pointer-events:none;';
   wrap.appendChild(clone);
   document.body.appendChild(wrap);
   return { wrap, clone };
@@ -951,13 +948,6 @@ function autofitCells(root){
   // ধাপ ১: কলাম ১-১৪ এর সব ঘরের জন্য একটামাত্র অভিন্ন ফন্ট সাইজ বের করা (রো-ভিত্তিতে আলাদা নয়) —
   // এতে প্রতিটি সাধারণ সারির উচ্চতা সমান থাকে, কোনো সারি বাকিগুলোর চেয়ে চিকন/মোটা দেখায় না
   const rows = Array.from(root.querySelectorAll('table tbody tr'));
-  if(rows.length === 0) return [];
-  // নিরাপত্তা: মোবাইলে ক্লোন সঠিকভাবে রেন্ডার না হলে (width=0) ডিফল্ট ফেলে দিন
-  const sampleTd = rows[0].querySelector('td');
-  if(!sampleTd || sampleTd.clientWidth === 0 || sampleTd.getBoundingClientRect().width === 0){
-    console.warn('autofitCells: offscreen clone not rendered properly, skipping autofit');
-    return [];
-  }
   const mainCellsByRow = rows.map(row=>Array.from(row.querySelectorAll('td:not(.select-col)')).slice(0,14));
   const allMainCells = mainCellsByRow.flat();
   const MAIN_MAX = 12.5, MAIN_MIN = 6.5;
@@ -1034,12 +1024,6 @@ function stretchRowsToFillPage(root){
   const tbody = root.querySelector('table tbody');
   const thead = root.querySelector('table thead');
   if(!table || !tbody) return [];
-  // নিরাপত্তা: মোবাইলে ক্লোন রেন্ডার না হলে বাদ দিন
-  const firstRow = tbody.querySelector('tr');
-  if(!firstRow || firstRow.getBoundingClientRect().height === 0){
-    console.warn('stretchRows: clone rows have zero height, skipping stretch');
-    return [];
-  }
 
   // ব্রাউজারের mm→px রূপান্তর যাচাই করতে একটা অস্থায়ী ক্যালিব্রেশন এলিমেন্ট ব্যবহার হচ্ছে
   const calib = document.createElement('div');
@@ -1111,16 +1095,10 @@ async function printReport(){
   const off = buildOffscreenClone();
   if(off){
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-    // অফস্ক্রিন ক্লোনের রেন্ডার হওয়ার জন্য আরেকটু সময় দিন (মোবাইলে font/layout লোড slower)
-    await new Promise(r=>setTimeout(r, 300));
     const results = autofitCells(off.clone);
-    if(results && results.length > 0){
-      applyFitResultsToLiveSheet(results);
-      const heights = stretchRowsToFillPage(off.clone);
-      if(heights && heights.length > 0){
-        applyRowHeightsToLiveSheet(heights);
-      }
-    }
+    applyFitResultsToLiveSheet(results);
+    const heights = stretchRowsToFillPage(off.clone);
+    applyRowHeightsToLiveSheet(heights);
     off.wrap.remove();
   }
   let restored = false;
