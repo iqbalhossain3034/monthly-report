@@ -94,6 +94,13 @@
   @media screen and (max-width:768px){
     .mobile-hide{display:none!important;}
     .report-sheet thead th{position:sticky;top:0;z-index:5;}
+    .report-sheet table{font-size:10.5px;}
+    .report-sheet th,.report-sheet td{padding:4px 3px;}
+    .select-col{min-width:62px;}
+    .select-col select{font-size:9.5px;}
+    .remark-col{min-width:92px;}
+    .owner-col{min-width:82px;}
+    .block-col{min-width:32px;}
   }
   tbody tr:nth-child(even){background:#fbf9f2;}
   tbody tr.off-day{background:#c7c7c2!important;}
@@ -816,8 +823,8 @@ function entryTabHTML(){
         <col style="width:4%">    <!-- বিলুপ্ত -->
         <col style="width:4%">    <!-- মোট -->
         <col style="width:5%">  <!-- ব্লক নং -->
-        <col style="width:12.5%"> <!-- টিকাদান কেন্দ্রের মালিকের নাম -->
-        <col style="width:4%">  <!-- ভ্রমণের উদ্দেশ্য -->
+        <col style="width:12%"> <!-- টিকাদান কেন্দ্রের মালিকের নাম -->
+        <col style="width:4.5%">  <!-- ভ্রমণের উদ্দেশ্য -->
         <col style="width:12%">   <!-- মন্তব্য -->
         <col class="no-print" style="width:30%"> <!-- নির্বাচন — প্রিন্টে সম্পূর্ণ বাদ যায়, স্ক্রিনে বড় রাখা হয়েছে যাতে ড্রপডাউনের পুরো লেখা পড়া যায় -->
       </colgroup>
@@ -827,7 +834,7 @@ function entryTabHTML(){
           <th rowspan="2" class="mobile-hide">ইউনিয়ন</th><th rowspan="2" class="mobile-hide">ওয়ার্ড নং</th>
           <th rowspan="2" class="mobile-hide">গ্রামের নাম</th><th colspan="4" class="mobile-hide">পরিদর্শিত বাড়ি</th>
           <th rowspan="2">ব্লক নং</th><th rowspan="2">টিকাদান কেন্দ্রের<br>মালিকের নাম</th>
-          <th rowspan="2">ভ্রমণের উদ্দেশ্য</th><th rowspan="2">মন্তব্য</th>
+          <th rowspan="2">ভ্রমণের<br>উদ্দেশ্য</th><th rowspan="2">মন্তব্য</th>
           <th rowspan="2" class="no-print select-col">নির্বাচন<br><span style="font-weight:400;font-size:9.5px;">(প্রিন্ট হবে না)</span></th>
         </tr>
         <tr>
