@@ -10,6 +10,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
     --ink:#1b2430;
@@ -813,7 +815,7 @@ function entryTabHTML(){
       <button class="btn btn-gold" onclick="fillRemarks()">🗓 Fill Remark (ছুটির তালিকা থেকে বসান)</button>
       <button class="btn btn-danger" onclick="clearMonth()">🧹 Clear (সব মুছুন)</button>
       <button class="btn btn-outline" onclick="printReport()">🖨 প্রিন্ট</button>
-      <button class="btn btn-outline" id="whatsappShareBtn" onclick="sharePDFToWhatsApp()">📤 হোয়াটসঅ্যাপে পাঠানোর জন্য PDF</button>
+      <button class="btn btn-outline" id="whatsappShareBtn" onclick="downloadPDFViaImage()">📥 PDF ডাউনলোড করুন (হোয়াটসঅ্যাপের জন্য)</button>
       <button class="btn btn-primary" onclick="submitMonth()">✅ মাসিক রিপোর্ট জমা দিন</button>
       ${isSubmitted?'<button class="btn btn-danger" onclick="unsubmitMonth()">জমা বাতিল করুন</button>':''}
     </div>
@@ -1128,15 +1130,47 @@ async function printReport(){
   window.print();
 }
 
-/* ================= হোয়াটসঅ্যাপে পাঠানোর জন্য PDF (এখন প্রিন্টের মতোই নিখুঁত পদ্ধতিতে) =================
-   আগে html2canvas দিয়ে পাতার একটা "ছবি" তুলে PDF বানানো হতো — এটা কখনোই ব্রাউজারের নিজস্ব
-   প্রিন্ট ইঞ্জিনের মতো স্বচ্ছ/নিখুঁত হতে পারত না (এটা ওই পদ্ধতির মৌলিক সীমাবদ্ধতা)। তাই এখন
-   এই বাটনও প্রিন্ট বাটনের মতোই আসল ব্রাউজার প্রিন্ট ডায়ালগ খোলে — সেখান থেকে "Save as PDF"
-   বেছে নিলে প্রিন্টের মতোই নিখুঁত মানের PDF পাওয়া যায়, যা তারপর হোয়াটসঅ্যাপে Attach করা যাবে। */
-async function sharePDFToWhatsApp(){
+/* ================= PDF ডাউনলোড (ছবি-ভিত্তিক পদ্ধতি — মোবাইল Chrome-এর বাংলা টেক্সট-বাগ এড়াতে) =================
+   সমস্যা: মোবাইল Chrome-এর নিজস্ব "Save as PDF" ইঞ্জিনটির জটিল বাংলা যুক্তাক্ষর/মাত্রা (conjunct)
+   PDF-এর টেক্সট-লেয়ারে রূপান্তরের একটা পরিচিত বাগ আছে — প্রতিটি অক্ষর-গুচ্ছ আলাদা আলাদা "শব্দ"
+   হিসেবে বসে যায়, ফলে লেখা ভাঙা/ফাঁকা-ফাঁকা দেখায় (ডেস্কটপ Chrome-এ এই বাগ নেই)। এটা CSS/HTML
+   দিয়ে ঠিক করা সম্ভব না — এটা ব্রাউজার ইঞ্জিনের নিজস্ব সীমাবদ্ধতা।
+   সমাধান: স্ক্রিনে যেভাবে বাংলা একদম সঠিকভাবে রেন্ডার হয় (এখানে কোনো বাগ নেই), সেই একই রেন্ডারিং-এর
+   একটা উচ্চ-রেজলিউশন "ছবি" (html2canvas দিয়ে) তুলে সরাসরি PDF-এ বসিয়ে দেওয়া হয় (jsPDF দিয়ে)।
+   এতে ব্রাউজারের বাগি PDF-টেক্সট-ইঞ্জিন আর ব্যবহার হয় না বলে লেখা ভাঙার কোনো সুযোগই থাকে না,
+   এবং ফাইলের নামও এখানেই সরাসরি নির্ধারণ করা যায় (কোনো টাইমিং সমস্যা ছাড়াই)। */
+async function downloadPDFViaImage(){
   if(!document.getElementById('reportSheet')) return;
-  toast('প্রিন্ট ডায়ালগ খুলছে — সেখানে "Save as PDF" বেছে নিন, তারপর হোয়াটসঅ্যাপ খুলে ফাইলটি Attach করে পাঠান', 6000);
-  await printReport();
+  if(!(window.html2canvas && window.jspdf)){
+    toast('⚠ PDF তৈরির লাইব্রেরি লোড হয়নি — ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন', 4500);
+    return;
+  }
+  toast('📄 PDF তৈরি করা হচ্ছে... একটু অপেক্ষা করুন', 9000);
+  await ensureFontsLoaded();
+  const off = buildOffscreenClone();
+  if(!off) return;
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  // এই দুটো ফাংশন ক্লোনের নিজস্ব cell/row-এ সরাসরি ফন্ট-সাইজ ও উচ্চতা বসিয়ে দেয়,
+  // তাই স্ক্রিনশট তোলার আগে ক্লোনটা ইতিমধ্যেই এক-পাতার সঠিক লেআউটে চলে আসে
+  autofitCells(off.clone);
+  stretchRowsToFillPage(off.clone);
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  try{
+    const canvas = await html2canvas(off.clone, {scale:3, backgroundColor:'#ffffff', useCORS:true, logging:false});
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
+    const pageWidth = 210, pageHeight = 297;
+    const imgW = pageWidth;
+    const imgH = canvas.height * imgW / canvas.width;
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, Math.min(imgH, pageHeight));
+    pdf.save(reportFileBaseName(CURRENT_MONTH) + '.pdf');
+    toast('✅ PDF ডাউনলোড হয়েছে — এখন হোয়াটসঅ্যাপ খুলে ফাইলটি Attach করে পাঠাতে পারেন', 5000);
+  }catch(e){
+    console.error('pdf export failed', e);
+    toast('⚠ PDF তৈরি করতে সমস্যা হয়েছে, আবার চেষ্টা করুন', 4500);
+  }finally{
+    off.wrap.remove();
+  }
 }
 window.addEventListener('beforeunload', function(e){
   if(SAVING_IN_PROGRESS){
