@@ -177,7 +177,7 @@
     .table-wrap{border:1.25px solid #000;padding:2px;}
     thead th{font-size:9px;font-weight:400;line-height:1.15;padding:3px 2px;background:#e8e8e8!important;color:#000!important;}
     th,td{padding:3px 4px;line-height:1.25;overflow-wrap:normal;word-break:keep-all;border:0.5px solid #555;vertical-align:middle;}
-    tbody tr:nth-child(even){background:#fff!important;}
+    tbody tr:nth-child(even):not(.off-day){background:#fff!important;}
     .print-only{display:inline;white-space:normal;overflow-wrap:normal;word-break:keep-all;}
     .muted{color:#000;font-weight:700;}
     td input[type="text"]{border:none;}
@@ -213,7 +213,7 @@
   .pdf-export-mode .table-wrap{border:1.25px solid #000;padding:2px;}
   .pdf-export-mode thead th{font-size:9px;font-weight:400;line-height:1.15;padding:3px 2px;background:#e8e8e8!important;color:#000!important;}
   .pdf-export-mode th,.pdf-export-mode td{padding:3px 4px;line-height:1.25;overflow-wrap:normal;word-break:keep-all;border:0.15px solid #000;vertical-align:middle;}
-  .pdf-export-mode tbody tr:nth-child(even){background:#fff!important;}
+  .pdf-export-mode tbody tr:nth-child(even):not(.off-day){background:#fff!important;}
   .pdf-export-mode tbody tr.active-row,.pdf-export-mode tbody tr:focus-within{background:transparent!important;box-shadow:none!important;}
   .pdf-export-mode tbody tr.active-row td,.pdf-export-mode tbody tr:focus-within td{color:inherit!important;font-weight:inherit!important;}
   .pdf-export-mode .print-only{display:inline;white-space:normal;overflow-wrap:normal;word-break:keep-all;}
