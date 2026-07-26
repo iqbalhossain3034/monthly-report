@@ -154,6 +154,10 @@
   .report-sign{font-size:13px;line-height:1.9;text-align:right;}
   .center-table input{min-width:60px;}
   .print-only{display:none;}
+  /* "office" (শুধু দেখা) ভূমিকার জন্য — reportSheet-এর ভেতরে এডিট-উপযোগী কন্ট্রোল (ড্রপডাউন/ইনপুট)
+     লুকিয়ে তার বদলে প্রিন্ট-স্টাইল প্লেইন টেক্সট দেখানো হয়, যাতে ভুলবশতও কোনো ডেটা বদলাতে না পারে */
+  .report-sheet.viewer-mode .no-print{display:none!important;}
+  .report-sheet.viewer-mode .print-only{display:inline!important;}
   td input[type="text"]{width:100%;border:1px solid #d8d2bd;border-radius:5px;padding:3px 6px;font:inherit;background:#fff;}
   @media print{
     @page{ size:A4 portrait; margin:6mm; }
@@ -422,16 +426,36 @@ let CURRENT_MONTH = isoDate(new Date()).slice(0,7);
 
 /* ================= লগইন — এখন সম্পূর্ণ Firebase Authentication দিয়ে চালিত =================
    পাসওয়ার্ড আর কোথাও প্লেইন-টেক্সটে সংরক্ষিত হয় না — Google-এর নিরাপদ Authentication
-   সিস্টেমে থাকে। এখানে শুধু কোন ইমেইলটা কোন ভূমিকায় (এডমিন/ইউজার) আছে সেটা ম্যাপ করা আছে। */
+   সিস্টেমে থাকে। এখানে শুধু কোন ইমেইলটা কোন ভূমিকায় (এডমিন/ইউজার/ভিউয়ার) আছে সেটা ম্যাপ করা আছে।
+
+   ⚠ তৃতীয় "office" অ্যাকাউন্টটি এখনো Firebase-এ তৈরি করা হয়নি — নিচের OFFICE_EMAIL-এ যেই
+   ইমেইল লেখা আছে, ঠিক সেই ইমেইল ও একটা পাসওয়ার্ড দিয়ে Firebase Console → Authentication →
+   Users থেকে "Add user" চাপুন। এটা কোনো আসল/সচল ইমেইল হতে হবে না (এটাতে মেইল যাবে না),
+   এটা শুধু Firebase-এর লগইন-পরিচয় হিসেবে ব্যবহৃত হবে — লগইন করার সময় ব্যবহারকারী শুধু
+   "office" ইউজারনেম আর যেই পাসওয়ার্ড আপনি Firebase-এ সেট করবেন সেটাই ব্যবহার করবে। */
+const OFFICE_EMAIL = 'office@monthly-report-app-1866a.firebaseapp.com';
 const ROLE_ACCOUNTS = {
-  admin: { email:'iqbal.hossain3034@gmail.com', label:'Iqbal' },
-  user:  { email:'shimulmai1722@gmail.com',      label:'Shimul' }
+  admin:  { email:'iqbal.hossain3034@gmail.com', label:'Iqbal' },
+  user:   { email:'shimulmai1722@gmail.com',      label:'Shimul' },
+  viewer: { email:OFFICE_EMAIL,                   label:'Office (শুধু দেখা)' }
 };
+// ছোট ইউজারনেম → আসল ইমেইল ম্যাপিং, যাতে প্রতিবার পুরো ইমেইল টাইপ করতে না হয়
+const USERNAME_TO_EMAIL = {
+  iqbal:  ROLE_ACCOUNTS.admin.email,
+  shimul: ROLE_ACCOUNTS.user.email,
+  office: ROLE_ACCOUNTS.viewer.email
+};
+function resolveLoginEmail(input){
+  const v = (input||'').trim().toLowerCase();
+  if(USERNAME_TO_EMAIL[v]) return USERNAME_TO_EMAIL[v];
+  return input.trim(); // ইউজারনেম না মিললে ধরে নেওয়া হচ্ছে হয়তো সরাসরি পুরো ইমেইল টাইপ করা হয়েছে
+}
 function roleForEmail(email){
   if(!email) return null;
   const e = email.toLowerCase();
   if(e === ROLE_ACCOUNTS.admin.email.toLowerCase()) return 'admin';
   if(e === ROLE_ACCOUNTS.user.email.toLowerCase()) return 'user';
+  if(e === ROLE_ACCOUNTS.viewer.email.toLowerCase()) return 'viewer';
   return null;
 }
 
@@ -490,6 +514,7 @@ function initFirebase(){
         if(role){
           AUTHENTICATED = true;
           CURRENT_ROLE = role;
+          if(role==='viewer' && ACTIVE_TAB==='entry') ACTIVE_TAB = 'history';
           if(!listening){ listening = true; listenFirebase(); }
         } else {
           // পরিচিত নয় এমন কোনো ইমেইল দিয়ে সাইন-ইন হয়ে থাকলে (ভুলবশত অন্য অ্যাকাউন্ট) সাথে সাথে সাইন-আউট করে দেওয়া হচ্ছে
@@ -655,7 +680,7 @@ function loginFormHTML(err){
     <div class="card" style="max-width:380px;margin:40px auto 0;">
       <h2 style="text-align:center;">লগইন করুন</h2>
       ${err?`<div style="background:var(--red-soft);color:var(--red);padding:8px 12px;border-radius:8px;font-size:12.5px;margin-bottom:12px;text-align:center;">${esc(err)}</div>`:''}
-      <div class="field"><label>ইমেইল</label><input type="text" id="loginEmail" autocomplete="username"></div>
+      <div class="field"><label>ইউজারনেম</label><input type="text" id="loginEmail" placeholder="iqbal / shimul / office" autocomplete="username"></div>
       <div class="field">
         <label>পাসওয়ার্ড</label>
         <div style="display:flex;gap:6px;">
@@ -675,17 +700,17 @@ function forgotPasswordHTML(err, sent){
   return `
     <div class="card" style="max-width:400px;margin:40px auto 0;">
       <h2 style="text-align:center;">পাসওয়ার্ড রিসেট করুন</h2>
-      <p class="hint" style="margin-top:-6px;">নিবন্ধিত ইমেইল দিন — Firebase থেকে আপনার ইমেইলে একটা পাসওয়ার্ড রিসেট লিংক পাঠানো হবে।</p>
+      <p class="hint" style="margin-top:-6px;">ইউজারনেম (iqbal/shimul) দিন — নিবন্ধিত ইমেইলে একটা পাসওয়ার্ড রিসেট লিংক পাঠানো হবে। (⚠ "office" অ্যাকাউন্টের কোনো আসল ইমেইল নেই বলে এই পদ্ধতিতে রিসেট করা যাবে না — সেটার পাসওয়ার্ড বদলাতে হলে এডমিনকে Firebase Console থেকে সরাসরি বদলাতে হবে)</p>
       ${sent?`<div style="background:var(--green-soft);color:var(--green-deep);padding:8px 12px;border-radius:8px;font-size:12.5px;margin-bottom:8px;text-align:center;">রিসেট লিংক পাঠানো হয়েছে — ইমেইল চেক করুন (স্প্যাম ফোল্ডারও দেখুন)</div>`:''}
       ${err?`<div style="background:var(--red-soft);color:var(--red);padding:8px 12px;border-radius:8px;font-size:12.5px;margin-bottom:8px;text-align:center;">${esc(err)}</div>`:''}
-      <div class="field"><label>আপনার ইমেইল</label><input type="text" id="recoveryEmail" placeholder="নিবন্ধিত ইমেইল লিখুন"></div>
+      <div class="field"><label>ইউজারনেম</label><input type="text" id="recoveryEmail" placeholder="iqbal / shimul"></div>
       <button class="btn btn-primary" style="width:100%;" onclick="doPasswordReset()">রিসেট লিংক পাঠান</button>
       <p class="hint" style="text-align:center;margin-top:12px;cursor:pointer;color:var(--green-mid);font-weight:600;" onclick="SHOW_FORGOT=false; renderLogin();">← লগইনে ফিরে যান</p>
     </div>`;
 }
 async function doPasswordReset(){
-  const email = document.getElementById('recoveryEmail').value.trim();
-  if(!email){ renderLogin('ইমেইল দিন'); return; }
+  const email = resolveLoginEmail(document.getElementById('recoveryEmail').value);
+  if(!email){ renderLogin('ইউজারনেম দিন'); return; }
   try{
     await firebase.auth().sendPasswordResetEmail(email);
     SHOW_FORGOT = true;
@@ -700,7 +725,7 @@ async function doPasswordReset(){
   }
 }
 async function doLogin(){
-  const email = document.getElementById('loginEmail').value.trim();
+  const email = resolveLoginEmail(document.getElementById('loginEmail').value);
   const pass = document.getElementById('loginPass').value;
   const btn = document.getElementById('loginBtn');
   if(btn){ btn.disabled = true; btn.textContent = 'যাচাই করা হচ্ছে…'; }
@@ -709,7 +734,7 @@ async function doLogin(){
     // সফল হলে onAuthStateChanged নিজে থেকেই AUTHENTICATED/CURRENT_ROLE সেট করে render() করবে
   }catch(e){
     console.error(e);
-    renderLogin('ইমেইল বা পাসওয়ার্ড সঠিক নয়');
+    renderLogin('ইউজারনেম বা পাসওয়ার্ড সঠিক নয়');
   }
 }
 function doLogout(){ firebase.auth().signOut(); }
@@ -727,12 +752,12 @@ function render(){
       </div>
     </div>
     <div class="tabs no-print">
-      ${tabBtn('entry','মাসিক রিপোর্ট')}
-      ${tabBtn('setup','কর্মী ও কেন্দ্র তালিকা')}
-      ${tabBtn('holidays','ছুটির তালিকা')}
+      ${CURRENT_ROLE!=='viewer' ? tabBtn('entry','মাসিক রিপোর্ট') : ''}
+      ${CURRENT_ROLE!=='viewer' ? tabBtn('setup','কর্মী ও কেন্দ্র তালিকা') : ''}
+      ${CURRENT_ROLE!=='viewer' ? tabBtn('holidays','ছুটির তালিকা') : ''}
       ${tabBtn('history','ইতিহাস ও সার্চ')}
       <span class="tab-btn" style="margin-left:auto;background:var(--gold-soft);color:var(--gold);border-color:var(--gold);cursor:default;">
-        ${CURRENT_ROLE==='admin'?'👑 এডমিন':'👤 ইউজার'}: ${esc(ROLE_ACCOUNTS[CURRENT_ROLE].label)}
+        ${CURRENT_ROLE==='admin'?'👑 এডমিন':(CURRENT_ROLE==='user'?'👤 ইউজার':'👁 শুধু দেখা')}: ${esc(ROLE_ACCOUNTS[CURRENT_ROLE].label)}
       </span>
       <button class="tab-btn" style="color:var(--red);" onclick="doLogout()">🔒 লগআউট</button>
     </div>
@@ -750,6 +775,7 @@ function setTab(id){
   render();
 }
 function renderTab(){
+  if(CURRENT_ROLE==='viewer' && (ACTIVE_TAB==='setup' || ACTIVE_TAB==='holidays')) ACTIVE_TAB = 'history';
   const c = document.getElementById('tab-content');
   if(ACTIVE_TAB==='entry') c.innerHTML = entryTabHTML();
   else if(ACTIVE_TAB==='setup') c.innerHTML = setupTabHTML();
@@ -763,6 +789,7 @@ function entryTabHTML(){
   const [y,m] = CURRENT_MONTH.split('-').map(Number);
   const monthLabel = BN_MONTHS[m-1] + ' ' + bnNum(y);
   const isSubmitted = !!STATE.submitted[CURRENT_MONTH];
+  const isViewer = CURRENT_ROLE==='viewer';
   const opts = optionsForCategory(entry.category);
   const w = STATE.worker;
   const hMap = holidayMap();
@@ -808,6 +835,18 @@ function entryTabHTML(){
   const catOpts = categoryList();
 
   return `
+  ${isViewer ? `
+  <div class="card no-print">
+    <div class="top-bar">
+      <h2 style="border:none;margin:0;">দৈনিক ভ্রমণ তালিকা — ${monthLabel} <span class="hint">(শুধু দেখার জন্য)</span></h2>
+      <div>${isSubmitted?'<span class="badge ok">এই মাস জমা দেওয়া হয়েছে</span>':'<span class="badge pending">এখনো জমা হয়নি</span>'}</div>
+    </div>
+    <div class="row-actions" style="margin-top:0;">
+      <button class="btn btn-outline" onclick="setTab('history')">← ইতিহাসে ফিরে যান</button>
+      <button class="btn btn-outline" onclick="printReport()">🖨 প্রিন্ট</button>
+      <button class="btn btn-outline" onclick="downloadPDFViaImage()">📥 PDF ডাউনলোড করুন</button>
+    </div>
+  </div>` : `
   <div class="card no-print">
     <div class="top-bar">
       <h2 style="border:none;margin:0;">দৈনিক ভ্রমণ তালিকা — ${monthLabel}</h2>
@@ -839,9 +878,9 @@ function entryTabHTML(){
       ⚠ শেষবার সংরক্ষণ ব্যর্থ হয়েছে। কারণ: <strong>${esc(LAST_SAVE_ERROR)}</strong><br>
       আপনার ইন্টারনেট সংযোগ পরীক্ষা করে আবার "✅ মাসিক রিপোর্ট জমা দিন" বাটনে চাপুন। বারবার একই সমস্যা হলে, পেজটা একবার রিফ্রেশ/পুনরায় খুলে চেষ্টা করুন — এতে ডেটা মুছে যাবে না।
     </div>`:''}
-  </div>
+  </div>`}
 
-  <div class="card report-sheet" id="reportSheet">
+  <div class="card report-sheet${isViewer?' viewer-mode':''}" id="reportSheet">
     <div class="report-head">
       <div class="report-head-title">
         গণপ্রজাতন্ত্রী বাংলাদেশ সরকার<br>
@@ -1441,6 +1480,7 @@ function handleImportFile(input){
 }
 
 function historyTabHTML(){
+  const isViewer = CURRENT_ROLE==='viewer';
   const months = Object.keys(STATE.entries).sort().reverse();
   let searchTerm = window._searchTerm || '';
   let filtered = months.filter(ym=> !searchTerm || ym.includes(searchTerm));
@@ -1459,7 +1499,7 @@ function historyTabHTML(){
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-outline" onclick="openMonth('${ym}')">দেখুন</button>
-        <button class="btn btn-danger" onclick="deleteMonthReport('${ym}')">🗑 ডিলিট</button>
+        ${isViewer?'':`<button class="btn btn-danger" onclick="deleteMonthReport('${ym}')">🗑 ডিলিট</button>`}
       </div>
     </div>`;
   }).join('') : `<div class="empty">কোনো মাসের রিপোর্ট এখনো তৈরি হয়নি</div>`;
@@ -1468,15 +1508,17 @@ function historyTabHTML(){
   <div class="card">
     <div class="top-bar">
       <h2 style="border:none;margin:0;">ইতিহাস ও সার্চ</h2>
+      ${isViewer?'':`
       <div style="display:flex;gap:8px;">
         <button class="btn btn-gold btn-sm" onclick="exportBackup()">⬇ ব্যাকআপ ডাউনলোড</button>
         <button class="btn btn-outline btn-sm" onclick="triggerImport()">⬆ ব্যাকআপ থেকে ফিরিয়ে আনুন</button>
         <input type="file" id="importFileInput" accept="application/json" style="display:none;" onchange="handleImportFile(this)">
-      </div>
+      </div>`}
     </div>
+    ${isViewer?'':`
     <p class="hint" style="margin-top:-8px;margin-bottom:12px;">
       অন্য ফোন বা কম্পিউটারে সব ডেটা নিয়ে যেতে চাইলে: এখান থেকে "ব্যাকআপ ডাউনলোড" করে ফাইলটা Google Drive/ইমেইলে রাখুন, তারপর অন্য ডিভাইসে এই অ্যাপ খুলে "ব্যাকআপ থেকে ফিরিয়ে আনুন" চাপুন।
-    </p>
+    </p>`}
     <div class="search-box">
       <input type="text" placeholder="মাস খুঁজুন (যেমন 2026-08)" value="${esc(searchTerm)}" oninput="window._searchTerm=this.value; renderTab();">
     </div>
