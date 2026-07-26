@@ -742,7 +742,13 @@ function render(){
   renderTab();
 }
 function tabBtn(id,label){ return `<button class="tab-btn ${ACTIVE_TAB===id?'active':''}" onclick="setTab('${id}')">${label}</button>`; }
-function setTab(id){ ACTIVE_TAB=id; render(); }
+function setTab(id){
+  ACTIVE_TAB=id;
+  // "মাসিক রিপোর্ট" ট্যাবে ফিরে এলে সবসময় সংরক্ষিত ডিফল্ট মাসেই (শেষ জমা দেওয়ার পরের মাস) রিসেট হবে —
+  // ইতিহাস থেকে অন্য কোনো মাস দেখা/এডিট করার প্রভাব যেন এখানে না থাকে
+  if(id==='entry') CURRENT_MONTH = STATE.currentMonth || CURRENT_MONTH;
+  render();
+}
 function renderTab(){
   const c = document.getElementById('tab-content');
   if(ACTIVE_TAB==='entry') c.innerHTML = entryTabHTML();
@@ -902,7 +908,7 @@ function entryTabHTML(){
     </div>
   </div>`;
 }
-function changeMonth(v){ CURRENT_MONTH = v; STATE.currentMonth = v; saveState(); renderTab(); }
+function changeMonth(v){ CURRENT_MONTH = v; renderTab(); }
 function changeCategory(v){ getMonthEntry(CURRENT_MONTH).category = v; saveState(); renderTab(); }
 async function updateRow(idx, field, val){
   const entry = getMonthEntry(CURRENT_MONTH);
