@@ -280,6 +280,11 @@ function isoDate(d){
   return `${y}-${m}-${dd}`;
 }
 function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
+function nextMonthStr(ym){
+  const [y,m] = ym.split('-').map(Number);
+  const d = new Date(y, m, 1); // m ইতিমধ্যে ১-ভিত্তিক, তাই এটাকে পরবর্তী মাসের 0-ভিত্তিক ইনডেক্স হিসেবে ব্যবহার করলেই পরের মাস পাওয়া যায়
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
 function esc(s){ return (s===undefined||s===null)?'':String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 /* =========================================================
@@ -356,6 +361,7 @@ function defaultState(){
     holidays: defaultHolidays(),
     entries:{},      // { 'YYYY-MM': {category, rows:[{date,code,remark}]} }
     submitted:{},    // { 'YYYY-MM': isoTimestamp }
+    currentMonth: isoDate(new Date()).slice(0,7), // পেজ খোলার সময় ডিফল্ট কোন মাস দেখানো হবে — জমা দেওয়ার পর স্বয়ংক্রিয়ভাবে পরের মাসে বদলে যায় ও মনে রাখে
     nextRowId: 25,
     nextHolidayId: 49
   };
@@ -397,6 +403,9 @@ function migrateState(state){
   }
   if(state.auth){
     delete state.auth; // পুরনো প্লেইন-টেক্সট পাসওয়ার্ড ডেটা — Firebase Authentication এখন এটা সামলায়, তাই এটা মুছে দেওয়া হচ্ছে
+  }
+  if(!state.currentMonth){
+    state.currentMonth = isoDate(new Date()).slice(0,7);
   }
   if(state.nextRowId===undefined) state.nextRowId = (state.centerRows.length||24)+1;
   if(state.nextHolidayId===undefined) state.nextHolidayId = (state.holidays.length||48)+1;
@@ -893,7 +902,7 @@ function entryTabHTML(){
     </div>
   </div>`;
 }
-function changeMonth(v){ CURRENT_MONTH = v; renderTab(); }
+function changeMonth(v){ CURRENT_MONTH = v; STATE.currentMonth = v; saveState(); renderTab(); }
 function changeCategory(v){ getMonthEntry(CURRENT_MONTH).category = v; saveState(); renderTab(); }
 async function updateRow(idx, field, val){
   const entry = getMonthEntry(CURRENT_MONTH);
@@ -1162,7 +1171,7 @@ async function downloadPDFViaImage(){
     const pageWidth = 210, pageHeight = 297;
     const imgW = pageWidth;
     const imgH = canvas.height * imgW / canvas.width;
-    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, Math.min(imgH, pageHeight));
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgW, Math.min(imgH, pageHeight));
     pdf.save(reportFileBaseName(CURRENT_MONTH) + '.pdf');
     toast('✅ PDF ডাউনলোড হয়েছে — এখন হোয়াটসঅ্যাপ খুলে ফাইলটি Attach করে পাঠাতে পারেন', 5000);
   }catch(e){
@@ -1192,9 +1201,13 @@ async function submitMonth(){
     }
   }
   SAVING_IN_PROGRESS = false;
-  renderTab();
   if(ok){
-    toast('মাসিক রিপোর্ট জমা হয়েছে ✔ — এখন ফাইল বন্ধ করতে পারেন');
+    const nextYm = nextMonthStr(CURRENT_MONTH);
+    CURRENT_MONTH = nextYm;
+    STATE.currentMonth = nextYm;
+    saveState();
+    renderTab();
+    toast('মাসিক রিপোর্ট জমা হয়েছে ✔ — পরবর্তী মাস স্বয়ংক্রিয়ভাবে সিলেক্ট হয়েছে');
   } else {
     delete STATE.submitted[CURRENT_MONTH];
     renderTab();
@@ -1489,6 +1502,7 @@ document.addEventListener('click', function(e){
 /* ---------------- init ---------------- */
 (async function init(){
   STATE = await loadState();
+  CURRENT_MONTH = STATE.currentMonth || isoDate(new Date()).slice(0,7);
   render();
   initFirebase();
 })();
