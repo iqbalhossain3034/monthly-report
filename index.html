@@ -1479,11 +1479,33 @@ function handleImportFile(input){
   input.value = '';
 }
 
+/* ইতিহাস সার্চ — এখন তিনভাবেই খোঁজা যায়: বাংলা মাসের নাম+বছর ("অক্টোবর ২০২৬"),
+   মাস-বছর সংখ্যায় হাইফেন দিয়ে ("10-2026"), বা টানা সংখ্যায় ("102026") */
+function monthMatchesSearch(ym, rawTerm){
+  const term = (rawTerm||'').trim();
+  if(!term) return true;
+  const [y,m] = ym.split('-').map(Number);
+  const yyyy = String(y), mm = String(m).padStart(2,'0');
+  // বাংলা মাসের নাম দিয়ে সরাসরি মিলানো (বাংলা বা ইংরেজি সংখ্যা — দুই রকম বছর লেখাতেই)
+  const bnLabel = BN_MONTHS[m-1] + ' ' + bnNum(y);
+  const enDigitLabel = BN_MONTHS[m-1] + ' ' + yyyy;
+  if(bnLabel.includes(term) || enDigitLabel.includes(term)) return true;
+  // বাংলা সংখ্যা টাইপ করে থাকলে সেটাকে ইংরেজি সংখ্যায় রূপান্তর
+  const normTerm = term.replace(/[০-৯]/g, d=>'০১২৩৪৫৬৭৮৯'.indexOf(d));
+  if(/^[0-9\-\s]+$/.test(normTerm)){
+    const digits = normTerm.replace(/[^0-9]/g,'');
+    if(digits){
+      const candidates = [`${yyyy}${mm}`, `${mm}${yyyy}`, yyyy, mm];
+      if(candidates.some(c=>c.includes(digits))) return true;
+    }
+  }
+  return false;
+}
 function historyTabHTML(){
   const isViewer = CURRENT_ROLE==='viewer';
   const months = Object.keys(STATE.entries).sort().reverse();
   let searchTerm = window._searchTerm || '';
-  let filtered = months.filter(ym=> !searchTerm || ym.includes(searchTerm));
+  let filtered = months.filter(ym=> monthMatchesSearch(ym, searchTerm));
 
   const listHTML = filtered.length ? filtered.map(ym=>{
     const [y,m]=ym.split('-').map(Number);
@@ -1520,7 +1542,7 @@ function historyTabHTML(){
       অন্য ফোন বা কম্পিউটারে সব ডেটা নিয়ে যেতে চাইলে: এখান থেকে "ব্যাকআপ ডাউনলোড" করে ফাইলটা Google Drive/ইমেইলে রাখুন, তারপর অন্য ডিভাইসে এই অ্যাপ খুলে "ব্যাকআপ থেকে ফিরিয়ে আনুন" চাপুন।
     </p>`}
     <div class="search-box">
-      <input type="text" placeholder="মাস খুঁজুন (যেমন 2026-08)" value="${esc(searchTerm)}" oninput="window._searchTerm=this.value; renderTab();">
+      <input type="text" placeholder="মাস খুঁজুন — যেমন: অক্টোবর ২০২৬ / 10-2026 / 102026" value="${esc(searchTerm)}" oninput="window._searchTerm=this.value; renderTab();">
     </div>
     <div class="history-list">${listHTML}</div>
   </div>
