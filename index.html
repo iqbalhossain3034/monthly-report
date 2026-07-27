@@ -76,6 +76,8 @@
   .btn-primary:hover{background:var(--green-mid);}
   .btn-gold{background:var(--gold-soft);color:var(--gold);border:1px solid var(--gold);}
   .btn-gold:hover{background:var(--gold);color:#fff;}
+  .btn-success{background:var(--green-soft);color:var(--green-deep);border:1px solid var(--green-deep);}
+  .btn-success:hover{background:var(--green-deep);color:#fff;}
   .btn-outline{background:#fff;border:1px solid var(--paper-line);color:var(--ink);}
   .btn-outline:hover{border-color:var(--green-mid);}
   .btn-danger{background:var(--red-soft);color:var(--red);border:1px solid var(--red);}
@@ -604,6 +606,19 @@ function holidayMap(){
   STATE.holidays.forEach(h=>{ if(h.date && !m[h.date]) m[h.date]=h.name; });
   return m;
 }
+// এই মাসের সব শুক্রবার/ছুটির দিনে মন্তব্য বসানো আছে কিনা — এটা প্রতিবার নতুন করে হিসাব করা হয়
+// (কোনো স্থায়ী ফ্ল্যাগ না রেখে), তাই কেউ পরে ছুটি যোগ/মন্তব্য মুছে দিলে এটা নিজে থেকেই ঠিক থাকে
+function remarksFullyFilled(ym){
+  const entry = getMonthEntry(ym);
+  const hMap = holidayMap();
+  for(const row of entry.rows){
+    const d = new Date(row.date+'T00:00:00');
+    const isFriday = d.getDay()===5;
+    const holiday = hMap[row.date];
+    if((isFriday || holiday) && !row.remark) return false;
+  }
+  return true;
+}
 
 /* ---------------- কেন্দ্র লুকআপ ---------------- */
 function centerLabel(r){
@@ -790,6 +805,7 @@ function entryTabHTML(){
   const monthLabel = BN_MONTHS[m-1] + ' ' + bnNum(y);
   const isSubmitted = !!STATE.submitted[CURRENT_MONTH];
   const isViewer = CURRENT_ROLE==='viewer';
+  const remarksDone = remarksFullyFilled(CURRENT_MONTH);
   const opts = optionsForCategory(entry.category);
   const w = STATE.worker;
   const hMap = holidayMap();
@@ -866,7 +882,7 @@ function entryTabHTML(){
       </div>
     </div>
     <div class="row-actions" style="margin-top:0;">
-      <button class="btn btn-gold" onclick="fillRemarks()">🗓 Fill Remark (ছুটির তালিকা থেকে বসান)</button>
+      <button class="btn ${remarksDone?'btn-success':'btn-gold'}" onclick="fillRemarks()">${remarksDone?'✅ Fill Remark (ছুটি বসানো হয়েছে)':'🗓 Fill Remark (ছুটির তালিকা থেকে বসান)'}</button>
       <button class="btn btn-danger" onclick="clearMonth()">🧹 Clear (সব মুছুন)</button>
       <button class="btn btn-outline" onclick="printReport()">🖨 প্রিন্ট</button>
       <button class="btn btn-outline" id="whatsappShareBtn" onclick="downloadPDFViaImage()">📥 PDF ডাউনলোড করুন (হোয়াটসঅ্যাপের জন্য)</button>
@@ -1233,6 +1249,10 @@ window.addEventListener('beforeunload', function(e){
   }
 });
 async function submitMonth(){
+  if(!remarksFullyFilled(CURRENT_MONTH)){
+    const proceed = confirm('⚠ এই মাসে কিছু ছুটির দিন/শুক্রবারে এখনও মন্তব্য বসানো হয়নি।\n\nআগে "🗓 Fill Remark" বাটনে চেপে ছুটিগুলো বসিয়ে নিন, তারপর জমা দিন।\n\n(তারপরও এভাবেই জমা দিতে চাইলে "OK" চাপুন, নাহলে "Cancel" চেপে আগে Fill Remark করে নিন)');
+    if(!proceed) return;
+  }
   STATE.submitted[CURRENT_MONTH] = new Date().toISOString();
   delete getMonthEntry(CURRENT_MONTH).activeIdx; // জমা দেওয়ার সাথে সাথে সবুজ হাইলাইট মুছে যাবে
   SAVING_IN_PROGRESS = true;
