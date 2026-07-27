@@ -1527,12 +1527,22 @@ function historyTabHTML(){
   ${grandTotalHTML()}`;
 }
 function openMonth(ym){ CURRENT_MONTH=ym; ACTIVE_TAB='entry'; render(); }
+/* ইতিহাস থেকে কোনো মাস মুছে ফেলার পর, "পরবর্তীতে কোন মাস ডিফল্ট থাকবে" — সেটা এখন সবসময়
+   ইতিহাসে বাকি থাকা সর্বশেষ জমা দেওয়া মাসের উপর ভিত্তি করে নতুন করে ঠিক করা হয় (সেই মাসের পরের মাস)।
+   কোনো জমা দেওয়া মাসই না থাকলে আজকের প্রকৃত ক্যালেন্ডার মাসে ফিরে যায়। */
+function recalcDefaultMonthFromHistory(){
+  const submittedMonths = Object.keys(STATE.submitted).sort();
+  STATE.currentMonth = submittedMonths.length
+    ? nextMonthStr(submittedMonths[submittedMonths.length-1])
+    : isoDate(new Date()).slice(0,7);
+}
 async function deleteMonthReport(ym){
   const [y,m] = ym.split('-').map(Number);
   const label = BN_MONTHS[m-1]+' '+bnNum(y);
   if(!confirm(`${label} মাসের পুরো রিপোর্ট স্থায়ীভাবে মুছে ফেলা হবে। আপনি কি নিশ্চিত?`)) return;
   delete STATE.entries[ym];
   delete STATE.submitted[ym];
+  recalcDefaultMonthFromHistory();
   const ok = await saveState();
   renderTab();
   toast(ok ? `${label} মাসের রিপোর্ট মুছে ফেলা হয়েছে` : '⚠ মুছতে সমস্যা হয়েছে, আবার চেষ্টা করুন');
