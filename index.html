@@ -139,7 +139,7 @@
   .history-item{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--paper-line);border-radius:10px;padding:10px 14px;background:#fffdf8;}
   .history-item strong{font-family:'Noto Serif Bengali',serif;}
   .search-box{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end;}
-  .search-box input,.search-box select{max-width:220px;}
+  .search-box select{max-width:220px;}
   .empty{text-align:center;color:#8a8471;padding:26px 10px;font-size:13px;}
   .setup-table td{text-align:left;}
   .setup-table th{white-space:nowrap;}
@@ -1481,6 +1481,18 @@ function handleImportFile(input){
 
 /* ইতিহাস সার্চ — এখন তিনভাবেই খোঁজা যায়: বাংলা মাসের নাম+বছর ("অক্টোবর ২০২৬"),
    মাস-বছর সংখ্যায় হাইফেন দিয়ে ("10-2026"), বা টানা সংখ্যায় ("102026") */
+// প্রতিটা অক্ষর টাইপ করার পর renderTab() পুরো ট্যাব-কনটেন্ট (সার্চ বক্সসহ) নতুন করে তৈরি করে,
+// যার ফলে স্বাভাবিকভাবেই কীবোর্ড ফোকাস হারিয়ে যায় (প্রথম অক্ষরের পরই "বেরিয়ে" যাওয়ার মতো লাগে)।
+// তাই রি-রেন্ডারের পর সার্চ বক্সে আবার ফোকাস ও কার্সারের অবস্থান ফিরিয়ে দেওয়া হচ্ছে।
+function handleHistorySearch(v){
+  window._searchTerm = v;
+  renderTab();
+  const el = document.getElementById('historySearchInput');
+  if(el){
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }
+}
 function monthMatchesSearch(ym, rawTerm){
   const term = (rawTerm||'').trim();
   if(!term) return true;
@@ -1542,8 +1554,11 @@ function historyTabHTML(){
       অন্য ফোন বা কম্পিউটারে সব ডেটা নিয়ে যেতে চাইলে: এখান থেকে "ব্যাকআপ ডাউনলোড" করে ফাইলটা Google Drive/ইমেইলে রাখুন, তারপর অন্য ডিভাইসে এই অ্যাপ খুলে "ব্যাকআপ থেকে ফিরিয়ে আনুন" চাপুন।
     </p>`}
     <div class="search-box">
-      <input type="text" placeholder="মাস খুঁজুন — যেমন: অক্টোবর ২০২৬ / 10-2026 / 102026" value="${esc(searchTerm)}" oninput="window._searchTerm=this.value; renderTab();">
+      <input type="text" id="historySearchInput" style="max-width:none;width:100%;" placeholder="মাস খুঁজুন..." value="${esc(searchTerm)}" oninput="handleHistorySearch(this.value)">
     </div>
+    <p class="hint" style="margin-top:-8px;margin-bottom:12px;">
+      যেকোনো একভাবে লিখে খুঁজতে পারবেন — বাংলা মাসের নাম+বছর (<b>অক্টোবর ২০২৬</b>), হাইফেন দিয়ে মাস-বছর (<b>10-2026</b>), অথবা টানা সংখ্যায় (<b>102026</b>)
+    </p>
     <div class="history-list">${listHTML}</div>
   </div>
   ${grandTotalHTML()}`;
