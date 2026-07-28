@@ -771,6 +771,7 @@ function render(){
       ${CURRENT_ROLE!=='viewer' ? tabBtn('setup','কর্মী ও কেন্দ্র তালিকা') : ''}
       ${CURRENT_ROLE!=='viewer' ? tabBtn('holidays','ছুটির তালিকা') : ''}
       ${tabBtn('history','ইতিহাস ও সার্চ')}
+      ${CURRENT_ROLE!=='viewer' ? tabBtn('dashboard','ড্যাশবোর্ড') : ''}
       <span class="tab-btn" style="margin-left:auto;background:var(--gold-soft);color:var(--gold);border-color:var(--gold);cursor:default;">
         ${CURRENT_ROLE==='admin'?'👑 এডমিন':(CURRENT_ROLE==='user'?'👤 ইউজার':'👁 শুধু দেখা')}: ${esc(ROLE_ACCOUNTS[CURRENT_ROLE].label)}
       </span>
@@ -790,11 +791,12 @@ function setTab(id){
   render();
 }
 function renderTab(){
-  if(CURRENT_ROLE==='viewer' && (ACTIVE_TAB==='setup' || ACTIVE_TAB==='holidays')) ACTIVE_TAB = 'history';
+  if(CURRENT_ROLE==='viewer' && (ACTIVE_TAB==='setup' || ACTIVE_TAB==='holidays' || ACTIVE_TAB==='dashboard')) ACTIVE_TAB = 'history';
   const c = document.getElementById('tab-content');
   if(ACTIVE_TAB==='entry') c.innerHTML = entryTabHTML();
   else if(ACTIVE_TAB==='setup') c.innerHTML = setupTabHTML();
   else if(ACTIVE_TAB==='holidays') c.innerHTML = holidaysTabHTML();
+  else if(ACTIVE_TAB==='dashboard') c.innerHTML = dashboardTabHTML();
   else c.innerHTML = historyTabHTML();
 }
 
@@ -1465,6 +1467,119 @@ function allProgramDaysFlat(){
     });
   });
   return out;
+}
+
+/* ================= ড্যাশবোর্ড — চার্ট তৈরির হেল্পার ================= */
+// প্রতিটা মাসের জন্য মোট কর্মসূচি সংখ্যা এবং IPC/EPI ভাঙন হিসাব করে, তারিখ অনুযায়ী সাজিয়ে দেয়
+function monthlyProgramStats(){
+  const map = {};
+  allProgramDaysFlat().forEach(r=>{
+    const ym = r.date.slice(0,7);
+    if(!map[ym]) map[ym] = {count:0, ipc:0, epi:0};
+    map[ym].count++;
+    if(r.purpose==='IPC') map[ym].ipc++;
+    else if(r.purpose==='EPI') map[ym].epi++;
+  });
+  return Object.keys(map).sort().map(ym=>{
+    const [y,m] = ym.split('-').map(Number);
+    return { ym, label: `${bnNum(m)}/${bnNum(String(y).slice(2))}`, fullLabel: BN_MONTHS[m-1]+' '+bnNum(y),
+      count: map[ym].count, ipc: map[ym].ipc, epi: map[ym].epi };
+  });
+}
+function renderBarChart(data){
+  if(!data.length) return '<div class="empty">কোনো ডেটা নেই — মাসিক রিপোর্টে কর্মসূচি বসালে এখানে চার্ট দেখা যাবে</div>';
+  const w=700,h=280,padL=36,padB=42,padT=26,padR=16;
+  const chartW=w-padL-padR, chartH=h-padT-padB;
+  const maxVal = Math.max(...data.map(d=>d.count), 1);
+  const gap = chartW/data.length;
+  const barW = Math.min(gap*0.6, 46);
+  let bars='', labels='';
+  data.forEach((d,i)=>{
+    const barH = (d.count/maxVal)*chartH;
+    const x = padL + i*gap + (gap-barW)/2;
+    const y = padT + chartH - barH;
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="#2f6690" rx="3"/>`;
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="11" text-anchor="middle" fill="#123a5e" font-weight="700">${bnNum(d.count)}</text>`;
+    labels += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+18}" font-size="10.5" text-anchor="middle" fill="#5a5648">${d.label}</text>`;
+  });
+  const axisLine = `<line x1="${padL}" y1="${padT+chartH}" x2="${w-padR}" y2="${padT+chartH}" stroke="#d8d2bd" stroke-width="1"/>`;
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">${axisLine}${bars}${labels}</svg>`;
+}
+function renderLineChart(data){
+  if(!data.length) return '<div class="empty">কোনো ডেটা নেই — মাসিক রিপোর্টে কর্মসূচি বসালে এখানে চার্ট দেখা যাবে</div>';
+  const w=700,h=280,padL=36,padB=42,padT=26,padR=16;
+  const chartW=w-padL-padR, chartH=h-padT-padB;
+  const maxVal = Math.max(...data.map(d=>d.count), 1);
+  const stepX = data.length>1 ? chartW/(data.length-1) : 0;
+  const points = data.map((d,i)=>{
+    const x = padL + i*stepX;
+    const y = padT + chartH - (d.count/maxVal)*chartH;
+    return {x,y,d};
+  });
+  const pathD = points.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+  const areaD = pathD + ` L ${points[points.length-1].x.toFixed(1)} ${(padT+chartH).toFixed(1)} L ${points[0].x.toFixed(1)} ${(padT+chartH).toFixed(1)} Z`;
+  const dots = points.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#b5651d"/><text x="${p.x.toFixed(1)}" y="${(p.y-10).toFixed(1)}" font-size="11" text-anchor="middle" fill="#b5651d" font-weight="700">${bnNum(p.d.count)}</text>`).join('');
+  const labels = points.map(p=>`<text x="${p.x.toFixed(1)}" y="${h-padB+18}" font-size="10.5" text-anchor="middle" fill="#5a5648">${p.d.label}</text>`).join('');
+  const axisLine = `<line x1="${padL}" y1="${padT+chartH}" x2="${w-padR}" y2="${padT+chartH}" stroke="#d8d2bd" stroke-width="1"/>`;
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">
+    <path d="${areaD}" fill="#f6e6d6" opacity="0.6"/>
+    ${axisLine}<path d="${pathD}" fill="none" stroke="#b5651d" stroke-width="2.5"/>${dots}${labels}
+  </svg>`;
+}
+function renderPieChart(ipc, epi){
+  const total = ipc+epi;
+  if(total===0) return '<div class="empty">কোনো ডেটা নেই — মাসিক রিপোর্টে IPC/EPI কর্মসূচি বসালে এখানে চার্ট দেখা যাবে</div>';
+  const cx=110, cy=110, r=95;
+  function polarToCartesian(angleDeg){
+    const rad = (angleDeg-90) * Math.PI/180;
+    return { x: cx + r*Math.cos(rad), y: cy + r*Math.sin(rad) };
+  }
+  function slicePath(startA, endA){
+    if(endA-startA >= 359.999) return `M ${cx} ${cy-r} A ${r} ${r} 0 1 1 ${cx-0.01} ${cy-r} Z`;
+    const s = polarToCartesian(startA), e = polarToCartesian(endA);
+    const largeArc = endA-startA > 180 ? 1 : 0;
+    return `M ${cx} ${cy} L ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)} Z`;
+  }
+  const ipcAngle = (ipc/total)*360;
+  const ipcPct = Math.round((ipc/total)*100), epiPct = 100-ipcPct;
+  return `
+  <div style="display:flex;align-items:center;gap:28px;flex-wrap:wrap;justify-content:center;">
+    <svg viewBox="0 0 220 220" style="width:200px;height:200px;flex:0 0 auto;" xmlns="http://www.w3.org/2000/svg">
+      <path d="${slicePath(0, ipcAngle)}" fill="#2f6690"/>
+      <path d="${slicePath(ipcAngle, 360)}" fill="#b5651d"/>
+      <circle cx="110" cy="110" r="52" fill="#fff"/>
+      <text x="110" y="104" text-anchor="middle" font-size="12" fill="#1b2430" font-weight="600">সর্বমোট</text>
+      <text x="110" y="125" text-anchor="middle" font-size="17" fill="#1b2430" font-weight="800">${bnNum(total)}</text>
+    </svg>
+    <div style="font-size:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="width:14px;height:14px;background:#2f6690;border-radius:3px;display:inline-block;"></span>
+        <span>IPC — <strong>${bnNum(ipc)}</strong> (${bnNum(ipcPct)}%)</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:14px;height:14px;background:#b5651d;border-radius:3px;display:inline-block;"></span>
+        <span>EPI — <strong>${bnNum(epi)}</strong> (${bnNum(epiPct)}%)</span>
+      </div>
+    </div>
+  </div>`;
+}
+function dashboardTabHTML(){
+  const monthly = monthlyProgramStats();
+  const totalIPC = monthly.reduce((s,d)=>s+d.ipc, 0);
+  const totalEPI = monthly.reduce((s,d)=>s+d.epi, 0);
+  return `
+  <div class="card">
+    <h2>মাস অনুযায়ী কর্মসূচি (বার চার্ট)</h2>
+    ${renderBarChart(monthly)}
+  </div>
+  <div class="card">
+    <h2>বছরের প্রবণতা (লাইন চার্ট)</h2>
+    ${renderLineChart(monthly)}
+  </div>
+  <div class="card">
+    <h2>IPC বনাম EPI অনুপাত</h2>
+    ${renderPieChart(totalIPC, totalEPI)}
+  </div>`;
 }
 function grandTotalHTML(){
   const from = window._gtFrom || '';
