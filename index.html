@@ -1487,8 +1487,8 @@ function grandTotalHTML(){
   <div class="card">
     <h2>বার্ষিক রিপোর্টের জন্য সর্বমোট সংখ্যা খুঁজে নিন</h2>
     <div class="search-box">
-      <div class="field" style="max-width:200px;"><label>তারিখ হইতে</label><input type="date" value="${from}" oninput="window._gtFrom=this.value; renderTab();"></div>
-      <div class="field" style="max-width:200px;"><label>তারিখ পর্যন্ত</label><input type="date" value="${to}" oninput="window._gtTo=this.value; renderTab();"></div>
+      <div class="field" style="max-width:200px;"><label>তারিখ হইতে</label><input type="date" id="gtFromInput" value="${from}" oninput="window._gtFrom=this.value; renderTabPreservingFocus();"></div>
+      <div class="field" style="max-width:200px;"><label>তারিখ পর্যন্ত</label><input type="date" id="gtToInput" value="${to}" oninput="window._gtTo=this.value; renderTabPreservingFocus();"></div>
     </div>
     <p class="hint" style="margin-top:-4px;margin-bottom:10px;">${(from||to) ? 'নির্বাচিত তারিখের মধ্যেকার হিসাব দেখানো হচ্ছে' : 'কোনো তারিখ সিলেক্ট করা না থাকলে সর্বমোট (গ্র্যান্ড টোটাল) দেখানো হচ্ছে'}</p>
     <div class="grid">
