@@ -1294,22 +1294,22 @@ function setupTabHTML(){
     const total = (Number(r.houseTo||0)-Number(r.houseFrom||0)+1) + Number(r.newC||0) - Number(r.cancelC||0);
     return `
     <tr>
-      <td><input type="text" value="${esc(r.blockNo)}" oninput="updateCenter('${r.id}','blockNo',this.value)" style="width:56px"></td>
-      <td><input type="text" value="${esc(r.note)}" placeholder="—" oninput="updateCenter('${r.id}','note',this.value)" style="width:44px"></td>
+      <td><input type="text" id="center-${r.id}-blockNo" value="${esc(r.blockNo)}" oninput="updateCenter('${r.id}','blockNo',this.value)" style="width:56px"></td>
+      <td><input type="text" id="center-${r.id}-note" value="${esc(r.note)}" placeholder="—" oninput="updateCenter('${r.id}','note',this.value)" style="width:44px"></td>
       <td>
-        <select onchange="updateCenter('${r.id}','purpose',this.value)" style="min-width:90px">
+        <select id="center-${r.id}-purpose" onchange="updateCenter('${r.id}','purpose',this.value)" style="min-width:90px">
           ${['IPC','EPI','সি সি সেবা'].map(p=>`<option value="${p}" ${r.purpose===p?'selected':''}>${p}</option>`).join('')}
         </select>
       </td>
-      <td><input type="text" value="${esc(r.mouzaNo)}" oninput="updateCenter('${r.id}','mouzaNo',this.value)" style="width:56px"></td>
-      <td><input type="text" value="${esc(r.mouzaName)}" placeholder="মৌজার নাম" oninput="updateCenter('${r.id}','mouzaName',this.value)"></td>
-      <td><input type="text" value="${esc(r.villageName)}" placeholder="গ্রামের নাম" oninput="updateCenter('${r.id}','villageName',this.value)"></td>
-      <td><input type="number" value="${r.houseFrom}" oninput="updateCenter('${r.id}','houseFrom',this.value)" style="width:64px"></td>
-      <td><input type="number" value="${r.houseTo}" oninput="updateCenter('${r.id}','houseTo',this.value)" style="width:64px"></td>
-      <td><input type="number" value="${r.newC||0}" oninput="updateCenter('${r.id}','newC',this.value)" style="width:52px"></td>
-      <td><input type="number" value="${r.cancelC||0}" oninput="updateCenter('${r.id}','cancelC',this.value)" style="width:52px"></td>
+      <td><input type="text" id="center-${r.id}-mouzaNo" value="${esc(r.mouzaNo)}" oninput="updateCenter('${r.id}','mouzaNo',this.value)" style="width:56px"></td>
+      <td><input type="text" id="center-${r.id}-mouzaName" value="${esc(r.mouzaName)}" placeholder="মৌজার নাম" oninput="updateCenter('${r.id}','mouzaName',this.value)"></td>
+      <td><input type="text" id="center-${r.id}-villageName" value="${esc(r.villageName)}" placeholder="গ্রামের নাম" oninput="updateCenter('${r.id}','villageName',this.value)"></td>
+      <td><input type="number" id="center-${r.id}-houseFrom" value="${r.houseFrom}" oninput="updateCenter('${r.id}','houseFrom',this.value)" style="width:64px"></td>
+      <td><input type="number" id="center-${r.id}-houseTo" value="${r.houseTo}" oninput="updateCenter('${r.id}','houseTo',this.value)" style="width:64px"></td>
+      <td><input type="number" id="center-${r.id}-newC" value="${r.newC||0}" oninput="updateCenter('${r.id}','newC',this.value)" style="width:52px"></td>
+      <td><input type="number" id="center-${r.id}-cancelC" value="${r.cancelC||0}" oninput="updateCenter('${r.id}','cancelC',this.value)" style="width:52px"></td>
       <td class="muted">${bnNum(total)}</td>
-      <td><input type="text" value="${esc(r.ownerName)}" placeholder="মালিকের নাম" oninput="updateCenter('${r.id}','ownerName',this.value)"></td>
+      <td><input type="text" id="center-${r.id}-ownerName" value="${esc(r.ownerName)}" placeholder="মালিকের নাম" oninput="updateCenter('${r.id}','ownerName',this.value)"></td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteCenter('${r.id}')">✕</button></td>
     </tr>`;
   }).join('');
@@ -1359,11 +1359,31 @@ function adminLoginSettingsHTML(){
     </div>
   </div>`;
 }
+// টাইপ করার সময় renderTab() পুরো টেবিল নতুন করে বানিয়ে ফেলে, যার ফলে ইনপুট বক্সটাও নতুন হয়ে
+// গিয়ে কীবোর্ড ফোকাস হারিয়ে যায় (প্রতি অক্ষরের পর "বেরিয়ে যাওয়ার" মতো লাগে)। তাই রি-রেন্ডারের
+// আগে কোন ইনপুটে ফোকাস ছিল ও কার্সার কোথায় ছিল তা মনে রেখে, রি-রেন্ডারের পর সেটা ফিরিয়ে দেওয়া হয়।
+function renderTabPreservingFocus(){
+  const active = document.activeElement;
+  let saved = null;
+  if(active && active.id && (active.tagName==='INPUT' || active.tagName==='SELECT' || active.tagName==='TEXTAREA')){
+    saved = {id:active.id, start:active.selectionStart, end:active.selectionEnd};
+  }
+  renderTab();
+  if(saved){
+    const el = document.getElementById(saved.id);
+    if(el){
+      el.focus();
+      if(typeof el.setSelectionRange==='function' && saved.start!=null){
+        try{ el.setSelectionRange(saved.start, saved.end); }catch(e){ /* কিছু ইনপুট টাইপ (যেমন number/date) এটা সমর্থন করে না */ }
+      }
+    }
+  }
+}
 function updateCenter(id,field,val){
   const r = STATE.centerRows.find(x=>x.id===id);
   if(!r) return;
   if(['houseFrom','houseTo','newC','cancelC'].includes(field)) val = Number(val)||0;
-  r[field]=val; saveState(); renderTab();
+  r[field]=val; saveState(); renderTabPreservingFocus();
 }
 function addCenter(){
   const id = 'c'+(STATE.nextRowId++);
@@ -1382,8 +1402,8 @@ function holidaysTabHTML(){
   const sorted = [...STATE.holidays].sort((a,b)=> (a.date||'').localeCompare(b.date||''));
   const rows = sorted.map(h=>`
     <tr>
-      <td><input type="date" value="${esc(h.date)}" oninput="updateHoliday('${h.id}','date',this.value)" style="width:150px"></td>
-      <td><input type="text" value="${esc(h.name)}" placeholder="ছুটির নাম" oninput="updateHoliday('${h.id}','name',this.value)"></td>
+      <td><input type="date" id="holiday-${h.id}-date" value="${esc(h.date)}" oninput="updateHoliday('${h.id}','date',this.value)" style="width:150px"></td>
+      <td><input type="text" id="holiday-${h.id}-name" value="${esc(h.name)}" placeholder="ছুটির নাম" oninput="updateHoliday('${h.id}','name',this.value)"></td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteHoliday('${h.id}')">✕</button></td>
     </tr>`).join('');
   return `
@@ -1407,7 +1427,7 @@ function holidaysTabHTML(){
 function updateHoliday(id,field,val){
   const h = STATE.holidays.find(x=>x.id===id);
   if(!h) return;
-  h[field]=val; saveState(); renderTab();
+  h[field]=val; saveState(); renderTabPreservingFocus();
 }
 function addHoliday(){
   const id = 'h'+(STATE.nextHolidayId++);
@@ -1432,6 +1452,20 @@ function allRowsFlat(){
   });
   return out;
 }
+// ইতিহাস ট্যাবে "X দিন পূরণ করা হয়েছে" যেভাবে গোনে (কোনো কোড বসানো থাকলেই — সি সি সেবা সহ),
+// ঠিক সেই একই হিসাবে সব মাস মিলিয়ে "সর্বমোট কর্মসূচি" ও IPC/EPI আলাদা করে গোনার জন্য
+function allProgramDaysFlat(){
+  const out = [];
+  Object.keys(STATE.entries).forEach(ym=>{
+    STATE.entries[ym].rows.forEach(r=>{
+      if(!r.code || r.code==='----') return;
+      const info = lookupByCode(r.code);
+      const purpose = info ? info.row.purpose : (r.code==='সি সি সেবা' ? 'সি সি সেবা' : null);
+      out.push({date:r.date, purpose});
+    });
+  });
+  return out;
+}
 function grandTotalHTML(){
   const from = window._gtFrom || '';
   const to = window._gtTo || '';
@@ -1441,6 +1475,14 @@ function grandTotalHTML(){
     return true;
   });
   const sums = rows.reduce((a,r)=>{a.newC+=r.newC;a.cancelC+=r.cancelC;a.total+=r.total;return a;}, {newC:0,cancelC:0,total:0});
+  const programRows = allProgramDaysFlat().filter(r=>{
+    if(from && r.date < from) return false;
+    if(to && r.date > to) return false;
+    return true;
+  });
+  const totalKormasuchi = programRows.length;
+  const totalIPC = programRows.filter(r=>r.purpose==='IPC').length;
+  const totalEPI = programRows.filter(r=>r.purpose==='EPI').length;
   return `
   <div class="card">
     <h2>বার্ষিক রিপোর্টের জন্য সর্বমোট সংখ্যা খুঁজে নিন</h2>
@@ -1448,9 +1490,21 @@ function grandTotalHTML(){
       <div class="field" style="max-width:200px;"><label>তারিখ হইতে</label><input type="date" value="${from}" oninput="window._gtFrom=this.value; renderTab();"></div>
       <div class="field" style="max-width:200px;"><label>তারিখ পর্যন্ত</label><input type="date" value="${to}" oninput="window._gtTo=this.value; renderTab();"></div>
     </div>
+    <p class="hint" style="margin-top:-4px;margin-bottom:10px;">${(from||to) ? 'নির্বাচিত তারিখের মধ্যেকার হিসাব দেখানো হচ্ছে' : 'কোনো তারিখ সিলেক্ট করা না থাকলে সর্বমোট (গ্র্যান্ড টোটাল) দেখানো হচ্ছে'}</p>
     <div class="grid">
       <div class="card" style="background:var(--green-soft);text-align:center;padding:14px;">
-        <div class="hint">নতুন</div><div style="font-size:22px;font-weight:800;color:var(--green-deep);">${bnNum(sums.newC)}</div>
+        <div class="hint">সর্বমোট কর্মসূচি</div><div style="font-size:22px;font-weight:800;color:var(--green-deep);">${bnNum(totalKormasuchi)}</div>
+      </div>
+      <div class="card" style="background:var(--green-soft);text-align:center;padding:14px;">
+        <div class="hint">কর্মসূচি IPC-এর টোটাল</div><div style="font-size:22px;font-weight:800;color:var(--green-deep);">${bnNum(totalIPC)}</div>
+      </div>
+      <div class="card" style="background:var(--green-soft);text-align:center;padding:14px;">
+        <div class="hint">কর্মসূচি EPI-এর টোটাল</div><div style="font-size:22px;font-weight:800;color:var(--green-deep);">${bnNum(totalEPI)}</div>
+      </div>
+    </div>
+    <div class="grid" style="margin-top:12px;">
+      <div class="card" style="background:var(--gold-soft);text-align:center;padding:14px;">
+        <div class="hint">নতুন</div><div style="font-size:22px;font-weight:800;color:var(--gold);">${bnNum(sums.newC)}</div>
       </div>
       <div class="card" style="background:var(--red-soft);text-align:center;padding:14px;">
         <div class="hint">বিলুপ্ত</div><div style="font-size:22px;font-weight:800;color:var(--red);">${bnNum(sums.cancelC)}</div>
