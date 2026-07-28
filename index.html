@@ -1634,6 +1634,7 @@ function dashboardTabHTML(){
   const monthly = monthlyProgramStats();
   const totalIPC = monthly.reduce((s,d)=>s+d.ipc, 0);
   const totalEPI = monthly.reduce((s,d)=>s+d.epi, 0);
+  const houseSums = allRowsFlat().reduce((a,r)=>{a.newC+=r.newC;a.cancelC+=r.cancelC;a.total+=r.total;return a;}, {newC:0,cancelC:0,total:0});
   return `
   <div class="card">
     <h2>মাস অনুযায়ী কর্মসূচি (বার চার্ট)</h2>
@@ -1646,6 +1647,20 @@ function dashboardTabHTML(){
   <div class="card">
     <h2>IPC বনাম EPI অনুপাত</h2>
     ${renderPieChart(totalIPC, totalEPI)}
+  </div>
+  <div class="card">
+    <h2>পরিদর্শিত বাড়ির সর্বমোট হিসাব (সব মাস মিলিয়ে)</h2>
+    <div class="grid">
+      <div class="card" style="background:var(--green-soft);text-align:center;padding:14px;">
+        <div class="hint">নতুন</div><div style="font-size:22px;font-weight:800;color:var(--green-deep);">${bnNum(houseSums.newC)}</div>
+      </div>
+      <div class="card" style="background:var(--red-soft);text-align:center;padding:14px;">
+        <div class="hint">বিলুপ্ত</div><div style="font-size:22px;font-weight:800;color:var(--red);">${bnNum(houseSums.cancelC)}</div>
+      </div>
+      <div class="card" style="background:var(--gold-soft);text-align:center;padding:14px;">
+        <div class="hint">মোট পরিদর্শিত বাড়ি</div><div style="font-size:22px;font-weight:800;color:var(--gold);">${bnNum(houseSums.total)}</div>
+      </div>
+    </div>
   </div>`;
 }
 function grandTotalHTML(){
