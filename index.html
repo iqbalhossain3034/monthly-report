@@ -1193,43 +1193,58 @@ async function ensureFontsLoaded(){
   }catch(e){ /* ফন্ট লোড ব্যর্থ হলেও প্রিন্ট আটকাবে না */ }
 }
 async function printReport(){
-  const prevTitle = document.title;
-  document.title = reportFileBaseName(CURRENT_MONTH);
+  if(!document.getElementById('reportSheet')) return;
+  if(!window.html2canvas){
+    toast('⚠ প্রিন্টের জন্য প্রয়োজনীয় লাইব্রেরি লোড হয়নি — ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন', 4500);
+    return;
+  }
+  toast('🖨 প্রিন্টের জন্য প্রস্তুত করা হচ্ছে...', 8000);
   await ensureFontsLoaded();
   const off = buildOffscreenClone();
-  if(off){
-    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-    const results = autofitCells(off.clone);
-    applyFitResultsToLiveSheet(results);
-    const heights = stretchRowsToFillPage(off.clone);
-    applyRowHeightsToLiveSheet(heights);
+  if(!off) return;
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  // এই দুটো ফাংশন ক্লোনের নিজস্ব cell/row-এ সরাসরি ফন্ট-সাইজ ও উচ্চতা বসিয়ে দেয়, তাই ক্লোনটা
+  // ছবি তোলার আগেই এক-পাতার নিখুঁত লেআউটে চলে আসে — এটাই PDF ডাউনলোড বাটনেও ব্যবহৃত হয়
+  autofitCells(off.clone);
+  stretchRowsToFillPage(off.clone);
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  try{
+    const canvas = await html2canvas(off.clone, {scale:3, backgroundColor:'#ffffff', useCORS:true, logging:false});
+    printImageDataUrl(canvas.toDataURL('image/png'), reportFileBaseName(CURRENT_MONTH));
+  }catch(e){
+    console.error('print via image failed', e);
+    toast('⚠ প্রিন্ট প্রস্তুত করতে সমস্যা হয়েছে, আবার চেষ্টা করুন', 4500);
+  }finally{
     off.wrap.remove();
   }
-  let restored = false;
-  const restore = ()=>{
-    if(restored) return;
-    restored = true;
-    document.title = prevTitle;
-    clearFitResultsFromLiveSheet();
-    clearRowHeightsFromLiveSheet();
-    window.removeEventListener('afterprint', restore);
-    document.removeEventListener('visibilitychange', onVisChange);
+}
+/* ব্রাউজারের নিজস্ব টেবিল-প্রিন্ট রেন্ডারিং কম্পিউটার/মোবাইল/বিভিন্ন প্রিন্ট ড্রাইভারে ভিন্ন ভিন্ন
+   মার্জিন ধরে নিত (কারো ক্ষেত্রে পাতার নিচে ফাঁকা জায়গা থেকে যেত), যেটা "PDF ডাউনলোড" বাটনের
+   সাথে মিলত না। তাই এখন প্রিন্টও ঠিক PDF ডাউনলোডের মতোই আগে থেকে বানানো এক-পাতার নিখুঁত ছবিটাই
+   ব্যবহার করে — একটা লুকানো iframe-এ সেই ছবি বসিয়ে সেটার উপরেই প্রিন্ট ডায়ালগ খোলা হয়, ফলে
+   প্রিন্ট আর PDF সবসময় হুবহু একই রকম আসবে। */
+function printImageDataUrl(dataUrl, titleText){
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;top:-10000px;left:-10000px;width:0;height:0;border:0;';
+  document.body.appendChild(iframe);
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(titleText||'')}</title><style>
+    @page{ size:A4 portrait; margin:0; }
+    html,body{ margin:0; padding:0; }
+    img{ display:block; width:210mm; height:297mm; object-fit:contain; }
+  </style></head><body><img id="printImg"></body></html>`);
+  doc.close();
+  const img = doc.getElementById('printImg');
+  const cleanup = ()=>{ setTimeout(()=>{ if(iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 1000); };
+  const doPrint = ()=>{
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    cleanup();
   };
-  // মোবাইলে window.print() একটা সিস্টেম-লেভেল প্রিন্ট/PDF শিট খোলে যেটা অ্যাপকে ব্যাকগ্রাউন্ডে
-  // পাঠিয়ে দেয় (visibilitychange -> 'hidden')। ব্যবহারকারী Save as PDF-এর সেটিংস (Copies, Paper
-  // size ইত্যাদি) নিয়ে সময় নিলে এটা কয়েক সেকেন্ডের বেশি সময় নিতে পারে। সেই সময়টায় টাইটেল/ফিট যেন
-  // আগেভাগেই পুরনো অবস্থায় ফিরে না যায়, তাই এখন restore() শুধু ঘটবে যখন: (ক) 'afterprint' ইভেন্ট
-  // আসবে (ডেস্কটপে সাধারণত এটাই আসে ঠিক সময়ে), অথবা (খ) ব্যবহারকারী আবার অ্যাপে ফিরে আসবে
-  // (visibilitychange -> 'visible', মোবাইলে এটাই আসল সংকেত — Save/Cancel যাই করুন না কেন)।
-  // নিরাপত্তার জন্য একটা অনেক লম্বা (২ মিনিট) ফলব্যাক টাইমআউটও রাখা হয়েছে, যাতে কোনো কারণে
-  // দুটো ইভেন্টের একটাও না এলে টাইটেল চিরস্থায়ীভাবে বদলে না থেকে যায়।
-  const onVisChange = ()=>{
-    if(document.visibilityState === 'visible') restore();
-  };
-  window.addEventListener('afterprint', restore);
-  document.addEventListener('visibilitychange', onVisChange);
-  setTimeout(restore, 120000);
-  window.print();
+  img.onload = doPrint;
+  img.onerror = ()=>{ toast('⚠ প্রিন্ট প্রস্তুত করতে সমস্যা হয়েছে', 4000); cleanup(); };
+  img.src = dataUrl;
 }
 
 /* ================= PDF ডাউনলোড (ছবি-ভিত্তিক পদ্ধতি — মোবাইল Chrome-এর বাংলা টেক্সট-বাগ এড়াতে) =================
@@ -1862,10 +1877,6 @@ function historyTabHTML(){
   ${grandTotalHTML()}`;
 }
 function openMonth(ym){
-  if(STATE.submitted[ym] && CURRENT_ROLE!=='viewer'){
-    const proceed = confirm('এই মাসিক রিপোর্টটি ইতোমধ্যে জমা দেওয়া হয়েছে। আপনি কি এটি আপডেট করতে চান?');
-    if(!proceed) return;
-  }
   CURRENT_MONTH=ym;
   ACTIVE_TAB='entry';
   VIEWING_FROM_HISTORY = true;
