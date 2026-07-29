@@ -176,8 +176,8 @@
     .report-worker{font-size:10.5px;margin-bottom:8px;line-height:1.5;}
     .report-note{font-size:9px;margin:8px 0 12px;}
     .report-sign{font-size:10.5px;line-height:1.5;}
-    .signature-wrap{display:block!important;text-align:right;margin-bottom:-16px;}
-    .signature-img{height:38px;max-width:130px;object-fit:contain;}
+    .signature-wrap{display:block!important;text-align:right;margin-bottom:-18px;}
+    .signature-img{height:42px;max-width:155px;object-fit:contain;}
     table{font-size:12.5px;table-layout:fixed;width:100%;border:1px solid #000;}
     .toast{display:none!important;}
     /* স্ক্রিনের জন্য নির্ধারিত min-width গুলো প্রিন্টে বাতিল — নাহলে <colgroup>-এর নির্দিষ্ট
@@ -216,8 +216,8 @@
   .pdf-export-mode .report-worker{font-size:10.5px;margin-bottom:8px;line-height:1.5;}
   .pdf-export-mode .report-note{font-size:9px;margin:8px 0 12px;}
   .pdf-export-mode .report-sign{font-size:10.5px;line-height:1.5;}
-  .pdf-export-mode .signature-wrap{display:block!important;text-align:right;margin-bottom:-16px;}
-  .pdf-export-mode .signature-img{height:38px;max-width:130px;object-fit:contain;}
+  .pdf-export-mode .signature-wrap{display:block!important;text-align:right;margin-bottom:-18px;}
+  .pdf-export-mode .signature-img{height:42px;max-width:155px;object-fit:contain;}
   .pdf-export-mode table{font-size:12.5px;table-layout:fixed;width:100%;border:1px solid #000;}
   .pdf-export-mode .toast{display:none!important;}
   .pdf-export-mode .select-col,.pdf-export-mode .remark-col,.pdf-export-mode .village-col,.pdf-export-mode .owner-col,.pdf-export-mode .block-col{min-width:0!important;}
@@ -1549,13 +1549,13 @@ function monthlyProgramStats(){
   });
   return Object.keys(map).sort().map(ym=>{
     const [y,m] = ym.split('-').map(Number);
-    return { ym, label: `${bnNum(m)}/${bnNum(String(y).slice(2))}`, fullLabel: BN_MONTHS[m-1]+' '+bnNum(y),
+    return { ym, label: `${BN_MONTHS[m-1]}-${bnNum(String(y).slice(2))}`, fullLabel: BN_MONTHS[m-1]+' '+bnNum(y),
       count: map[ym].count, ipc: map[ym].ipc, epi: map[ym].epi };
   });
 }
 function renderBarChart(data){
   if(!data.length) return '<div class="empty">কোনো ডেটা নেই — মাসিক রিপোর্টে কর্মসূচি বসালে এখানে চার্ট দেখা যাবে</div>';
-  const w=700,h=280,padL=36,padB=42,padT=26,padR=16;
+  const w=700,h=300,padL=36,padB=66,padT=26,padR=16;
   const chartW=w-padL-padR, chartH=h-padT-padB;
   const maxVal = Math.max(...data.map(d=>d.count), 1);
   const gap = chartW/data.length;
@@ -1565,16 +1565,17 @@ function renderBarChart(data){
     const barH = (d.count/maxVal)*chartH;
     const x = padL + i*gap + (gap-barW)/2;
     const y = padT + chartH - barH;
+    const lx = (x+barW/2).toFixed(1), ly = (h-padB+14).toFixed(1);
     bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="#2f6690" rx="3"/>`;
     bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="11" text-anchor="middle" fill="#123a5e" font-weight="700">${bnNum(d.count)}</text>`;
-    labels += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+18}" font-size="10.5" text-anchor="middle" fill="#5a5648">${d.label}</text>`;
+    labels += `<text x="${lx}" y="${ly}" font-size="10" text-anchor="end" fill="#5a5648" transform="rotate(-40 ${lx} ${ly})">${d.label}</text>`;
   });
   const axisLine = `<line x1="${padL}" y1="${padT+chartH}" x2="${w-padR}" y2="${padT+chartH}" stroke="#d8d2bd" stroke-width="1"/>`;
   return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">${axisLine}${bars}${labels}</svg>`;
 }
 function renderLineChart(data){
   if(!data.length) return '<div class="empty">কোনো ডেটা নেই — মাসিক রিপোর্টে কর্মসূচি বসালে এখানে চার্ট দেখা যাবে</div>';
-  const w=700,h=280,padL=36,padB=42,padT=26,padR=16;
+  const w=700,h=300,padL=36,padB=66,padT=26,padR=16;
   const chartW=w-padL-padR, chartH=h-padT-padB;
   const maxVal = Math.max(...data.map(d=>d.count), 1);
   const stepX = data.length>1 ? chartW/(data.length-1) : 0;
@@ -1586,7 +1587,10 @@ function renderLineChart(data){
   const pathD = points.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
   const areaD = pathD + ` L ${points[points.length-1].x.toFixed(1)} ${(padT+chartH).toFixed(1)} L ${points[0].x.toFixed(1)} ${(padT+chartH).toFixed(1)} Z`;
   const dots = points.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#b5651d"/><text x="${p.x.toFixed(1)}" y="${(p.y-10).toFixed(1)}" font-size="11" text-anchor="middle" fill="#b5651d" font-weight="700">${bnNum(p.d.count)}</text>`).join('');
-  const labels = points.map(p=>`<text x="${p.x.toFixed(1)}" y="${h-padB+18}" font-size="10.5" text-anchor="middle" fill="#5a5648">${p.d.label}</text>`).join('');
+  const labels = points.map(p=>{
+    const lx = p.x.toFixed(1), ly = (h-padB+14).toFixed(1);
+    return `<text x="${lx}" y="${ly}" font-size="10" text-anchor="end" fill="#5a5648" transform="rotate(-40 ${lx} ${ly})">${p.d.label}</text>`;
+  }).join('');
   const axisLine = `<line x1="${padL}" y1="${padT+chartH}" x2="${w-padR}" y2="${padT+chartH}" stroke="#d8d2bd" stroke-width="1"/>`;
   return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">
     <path d="${areaD}" fill="#f6e6d6" opacity="0.6"/>
