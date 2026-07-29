@@ -154,9 +154,8 @@
   .report-worker{display:flex;justify-content:space-between;gap:20px;font-size:13px;margin-bottom:14px;line-height:1.8;flex-wrap:wrap;}
   .report-note{font-size:11.5px;color:#5a5648;margin:14px 0 20px;}
   .report-sign{font-size:13px;line-height:1.9;text-align:right;}
-  .sign-area{position:relative;display:inline-block;width:300px;height:22px;text-align:left;}
-  .sign-label{position:absolute;left:0;top:0;white-space:nowrap;}
-  .sign-underline{position:absolute;right:0;bottom:3px;width:150px;border-bottom:1px solid #1b2430;}
+  .sign-row{display:flex;justify-content:flex-end;align-items:flex-end;gap:4px;}
+  .sign-blank{position:relative;display:inline-block;width:170px;border-bottom:1px solid #1b2430;height:16px;}
   .signature-img{display:none;}
   .center-table input{min-width:60px;}
   .print-only{display:none;}
@@ -177,10 +176,9 @@
     .report-head-month{font-size:11px;}
     .report-worker{font-size:10.5px;margin-bottom:8px;line-height:1.5;}
     .report-note{font-size:9px;margin:8px 0 12px;}
-    .report-sign{font-size:10.5px;line-height:1.5;margin-top:18px;}
-    .sign-area{width:260px;height:18px;}
-    .sign-underline{width:130px;}
-    .signature-img{display:block!important;position:absolute;right:5px;bottom:6px;height:42px;max-width:150px;object-fit:contain;}
+    .report-sign{font-size:10.5px;line-height:1.5;margin-top:16px;}
+    .sign-blank{width:170px;height:14px;}
+    .signature-img{display:block!important;position:absolute;left:50%;bottom:0px;transform:translateX(-50%);height:42px;max-width:160px;object-fit:contain;}
     table{font-size:12.5px;table-layout:fixed;width:100%;border:1px solid #000;}
     .toast{display:none!important;}
     /* স্ক্রিনের জন্য নির্ধারিত min-width গুলো প্রিন্টে বাতিল — নাহলে <colgroup>-এর নির্দিষ্ট
@@ -218,10 +216,9 @@
   .pdf-export-mode .report-head-month{font-size:11px;}
   .pdf-export-mode .report-worker{font-size:10.5px;margin-bottom:8px;line-height:1.5;}
   .pdf-export-mode .report-note{font-size:9px;margin:8px 0 12px;}
-  .pdf-export-mode .report-sign{font-size:10.5px;line-height:1.5;margin-top:18px;}
-  .pdf-export-mode .sign-area{width:260px;height:18px;}
-  .pdf-export-mode .sign-underline{width:130px;}
-  .pdf-export-mode .signature-img{display:block!important;position:absolute;right:5px;bottom:6px;height:42px;max-width:150px;object-fit:contain;}
+  .pdf-export-mode .report-sign{font-size:10.5px;line-height:1.5;margin-top:16px;}
+  .pdf-export-mode .sign-blank{width:170px;height:14px;}
+  .pdf-export-mode .signature-img{display:block!important;position:absolute;left:50%;bottom:0px;transform:translateX(-50%);height:42px;max-width:160px;object-fit:contain;}
   .pdf-export-mode table{font-size:12.5px;table-layout:fixed;width:100%;border:1px solid #000;}
   .pdf-export-mode .toast{display:none!important;}
   .pdf-export-mode .select-col,.pdf-export-mode .remark-col,.pdf-export-mode .village-col,.pdf-export-mode .owner-col,.pdf-export-mode .block-col{min-width:0!important;}
@@ -969,10 +966,9 @@ function entryTabHTML(){
     </div>
     <p class="report-note">বিঃদ্রঃ কর্তৃপক্ষের নির্দেশক্রমে কর্মসূচি পরিবর্তনশীল</p>
     <div class="report-sign">
-      <div class="sign-area">
-        <span class="sign-label">দাখিলকারীর স্বাক্ষরঃ</span>
-        <span class="sign-underline"></span>
-        ${w.signatureImage ? `<img src="${w.signatureImage}" class="signature-img" alt="স্বাক্ষর">` : ''}
+      <div class="sign-row">
+        <span>দাখিলকারীর স্বাক্ষরঃ</span>
+        <span class="sign-blank">${w.signatureImage ? `<img src="${w.signatureImage}" class="signature-img" alt="স্বাক্ষর">` : ''}</span>
       </div>
       <div>নাম ও পদবীঃ ${esc(w.name)} ( ${esc(w.designation)} )</div>
       <div>মোবাইলঃ ${esc(w.mobile)}</div>
