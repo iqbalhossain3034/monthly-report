@@ -1572,6 +1572,61 @@ function monthlyProgramStats(){
       count: map[ym].count, ipc: map[ym].ipc, epi: map[ym].epi };
   });
 }
+// প্রতিটা মাসের জন্য মোট পরিদর্শিত বাড়ি এবং IPC/EPI-এর আওতায় ভাঙন হিসাব করে
+function monthlyHouseStats(){
+  const map = {};
+  allRowsFlat_withPurpose().forEach(r=>{
+    const ym = r.date.slice(0,7);
+    if(!map[ym]) map[ym] = {total:0, ipc:0, epi:0};
+    map[ym].total += r.total;
+    if(r.purpose==='IPC') map[ym].ipc += r.total;
+    else if(r.purpose==='EPI') map[ym].epi += r.total;
+  });
+  return Object.keys(map).sort().map(ym=>{
+    const [y,m] = ym.split('-').map(Number);
+    return { ym, label: `${BN_MONTHS[m-1]}-${bnNum(String(y).slice(2))}`,
+      total: map[ym].total, ipc: map[ym].ipc, epi: map[ym].epi };
+  });
+}
+function allRowsFlat_withPurpose(){
+  const out = [];
+  Object.keys(STATE.entries).forEach(ym=>{
+    STATE.entries[ym].rows.forEach(r=>{
+      const info = lookupByCode(r.code);
+      if(!info) return;
+      out.push({date:r.date, total:info.total, purpose:info.row.purpose});
+    });
+  });
+  return out;
+}
+// একাধিক সিরিজ (যেমন সর্বমোট/IPC/EPI) পাশাপাশি বার আকারে দেখানোর জন্য — একটা লেজেন্ডসহ
+function renderGroupedBarChart(data, series){
+  if(!data.length) return '<div class="empty">কোনো ডেটা নেই — মাসিক রিপোর্টে কর্মসূচি বসালে এখানে চার্ট দেখা যাবে</div>';
+  const w=700,h=320,padL=38,padB=66,padT=26,padR=16;
+  const chartW=w-padL-padR, chartH=h-padT-padB;
+  const maxVal = Math.max(...data.flatMap(d=>series.map(s=>Number(d[s.key])||0)), 1);
+  const groupGap = chartW/data.length;
+  const barW = Math.min((groupGap*0.72)/series.length, 20);
+  const groupInnerWidth = barW*series.length;
+  let bars='', labels='';
+  data.forEach((d,gi)=>{
+    const groupX = padL + gi*groupGap + (groupGap-groupInnerWidth)/2;
+    series.forEach((s,si)=>{
+      const val = Number(d[s.key])||0;
+      const barH = (val/maxVal)*chartH;
+      const x = groupX + si*barW;
+      const y = padT + chartH - barH;
+      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(barW-2).toFixed(1)}" height="${barH.toFixed(1)}" fill="${s.color}" rx="2"/>`;
+      if(val>0) bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-4).toFixed(1)}" font-size="8" text-anchor="middle" fill="${s.color}" font-weight="700">${bnNum(val)}</text>`;
+    });
+    const lx=(groupX+groupInnerWidth/2).toFixed(1), ly=(h-padB+14).toFixed(1);
+    labels += `<text x="${lx}" y="${ly}" font-size="10" text-anchor="end" fill="#5a5648" transform="rotate(-40 ${lx} ${ly})">${d.label}</text>`;
+  });
+  const axisLine = `<line x1="${padL}" y1="${padT+chartH}" x2="${w-padR}" y2="${padT+chartH}" stroke="#d8d2bd" stroke-width="1"/>`;
+  const legend = series.map(s=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:16px;"><span style="width:12px;height:12px;background:${s.color};border-radius:3px;display:inline-block;"></span>${s.label}</span>`).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">${axisLine}${bars}${labels}</svg>
+  <div style="margin-top:10px;font-size:12.5px;display:flex;flex-wrap:wrap;">${legend}</div>`;
+}
 function renderBarChart(data){
   if(!data.length) return '<div class="empty">কোনো ডেটা নেই — মাসিক রিপোর্টে কর্মসূচি বসালে এখানে চার্ট দেখা যাবে</div>';
   const w=700,h=300,padL=36,padB=66,padT=26,padR=16;
@@ -1655,13 +1710,34 @@ function renderPieChart(ipc, epi){
 }
 function dashboardTabHTML(){
   const monthly = monthlyProgramStats();
+  const houseMonthly = monthlyHouseStats();
   const totalIPC = monthly.reduce((s,d)=>s+d.ipc, 0);
   const totalEPI = monthly.reduce((s,d)=>s+d.epi, 0);
   const houseSums = allRowsFlat().reduce((a,r)=>{a.newC+=r.newC;a.cancelC+=r.cancelC;a.total+=r.total;return a;}, {newC:0,cancelC:0,total:0});
+  const programSeries = [
+    {key:'count', label:'সর্বমোট কর্মসূচি', color:'#2f6690'},
+    {key:'ipc', label:'IPC', color:'#b5651d'},
+    {key:'epi', label:'EPI', color:'#a13d3d'}
+  ];
+  const houseSeries = [
+    {key:'total', label:'সর্বমোট পরিদর্শিত বাড়ি', color:'#2f6690'},
+    {key:'ipc', label:'IPC-এর আওতায়', color:'#b5651d'},
+    {key:'epi', label:'EPI-এর আওতায়', color:'#a13d3d'}
+  ];
   return `
+  <div class="card" style="background:var(--green-soft);border:1px solid var(--green-deep);">
+    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--green-deep);">
+      <div><strong>IPC</strong> = Interpersonal Communication (আন্তঃব্যক্তিক যোগাযোগ)</div>
+      <div><strong>EPI</strong> = Expanded Programme on Immunization (বর্ধিত টিকাদান কর্মসূচি)</div>
+    </div>
+  </div>
   <div class="card">
     <h2>মাস অনুযায়ী কর্মসূচি (বার চার্ট)</h2>
-    ${renderBarChart(monthly)}
+    ${renderGroupedBarChart(monthly, programSeries)}
+  </div>
+  <div class="card">
+    <h2>মাস অনুযায়ী পরিদর্শিত বাড়ি (বার চার্ট)</h2>
+    ${renderGroupedBarChart(houseMonthly, houseSeries)}
   </div>
   <div class="card">
     <h2>বছরের প্রবণতা (লাইন চার্ট)</h2>
