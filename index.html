@@ -498,7 +498,7 @@ const firebaseConfig = {
   measurementId: "G-FZDFY172R4"
 };
 let fbDb = null, fbDocRef = null, fbReady = false;
-let SUPPRESS_NEXT_SNAPSHOT = false; // নিজের করা লেখা নিজেই যেন আবার প্রসেস না করে (পুনরাবৃত্তি এড়াতে)
+let LAST_PUSHED_JSON = null; // আমাদের নিজের সর্বশেষ পাঠানো ডেটা — এর প্রতিধ্বনি (echo) যেন আবার প্রসেস না হয়
 let fbSyncTimer = null;
 let FIREBASE_STATUS = 'connecting'; // 'connecting' | 'online' | 'offline'
 
@@ -546,11 +546,16 @@ function listenFirebase(){
   if(!fbReady) return;
   fbDocRef.onSnapshot((doc)=>{
     FIREBASE_STATUS = 'online';
-    if(SUPPRESS_NEXT_SNAPSHOT){ SUPPRESS_NEXT_SNAPSHOT = false; return; }
     if(doc.exists && doc.data() && doc.data().json){
+      const incoming = doc.data().json;
+      // এটা আমাদের নিজেরই এইমাত্র পাঠানো ডেটার প্রতিধ্বনি হলে (optimistic অথবা server-confirmed —
+      // Firestore দুটোর জন্যই আলাদা করে snapshot event পাঠায়) আবার প্রসেস/render করার দরকার নেই,
+      // কারণ আমাদের বর্তমান STATE-এ এর চেয়ে নতুন এডিট (যেমন অন্য কোনো সারির সিলেকশন) থাকতে পারে —
+      // পুরনো একটা ইকো দিয়ে সেটা ওভাররাইট হয়ে গেলেই "হাইলাইট হারিয়ে যাওয়া"-র মতো বাগ তৈরি হতো
+      if(incoming === LAST_PUSHED_JSON) return;
       try{
-        STATE = migrateState(JSON.parse(doc.data().json));
-        localStorage.setItem(STORAGE_KEY, doc.data().json);
+        STATE = migrateState(JSON.parse(incoming));
+        localStorage.setItem(STORAGE_KEY, incoming);
         render();
       }catch(e){ console.error('snapshot parse failed', e); }
     } else {
@@ -573,16 +578,16 @@ function scheduleFirebaseSync(){
 
 async function pushToFirebase(){
   if(!fbReady) return;
+  const json = JSON.stringify(STATE);
   try{
-    SUPPRESS_NEXT_SNAPSHOT = true;
+    LAST_PUSHED_JSON = json;
     await fbDocRef.set({
-      json: JSON.stringify(STATE),
+      json,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     FIREBASE_STATUS = 'online';
   }catch(e){
     console.error('firebase push failed', e);
-    SUPPRESS_NEXT_SNAPSHOT = false;
     FIREBASE_STATUS = 'offline';
   }
 }
