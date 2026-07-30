@@ -859,9 +859,9 @@ function entryTabHTML(){
       <td class="block-col">${info?esc(info.row.blockNo):(row.code==='সি সি সেবা'?'—':dash)}</td>
       <td class="owner-col">${info?(esc(info.row.ownerName)||'<span class="muted">?</span>'):(row.code==='সি সি সেবা'?'সি সি সেবা কেন্দ্র':dash)}</td>
       <td>${info?esc(info.row.purpose):(row.code==='সি সি সেবা'?'সি সি সেবা':dash)}</td>
-      <td class="remark-col"><input type="text" class="no-print" value="${esc(row.remark)}" placeholder="—" oninput="updateRow(${idx},'remark',this.value)"><span class="print-only">${row.remark?esc(row.remark):'—'}</span></td>
+      <td class="remark-col"><input type="text" class="no-print" id="row-remark-${idx}" value="${esc(row.remark)}" placeholder="—" oninput="updateRow(${idx},'remark',this.value)"><span class="print-only">${row.remark?esc(row.remark):'—'}</span></td>
       <td class="no-print select-col">
-        <select onchange="handleCodeChange(${idx},this.value)">
+        <select id="row-select-${idx}" onchange="handleCodeChange(${idx},this.value)">
           <option value="">--নির্বাচন--</option>
           ${rowOpts.map(o=>`<option value="${esc(o)}" ${row.code===o?'selected':''}>${esc(o)}</option>`).join('')}
         </select>
@@ -994,7 +994,7 @@ function changeCategory(v){ getMonthEntry(CURRENT_MONTH).category = v; saveState
 function handleCodeChange(idx, val){
   if(STATE.submitted[CURRENT_MONTH]){
     const proceed = confirm('এই রিপোর্টটি ইতিমধ্যে জমা দেওয়া হয়েছে। আপনি কি এই নির্বাচন পরিবর্তন করতে চান?');
-    if(!proceed){ renderTab(); return; } // বাতিল করলে ড্রপডাউনের ভিজ্যুয়াল পরিবর্তনও আগের অবস্থায় ফিরে যাবে
+    if(!proceed){ renderTabPreservingFocus(); return; } // বাতিল করলে ড্রপডাউনের ভিজ্যুয়াল পরিবর্তনও আগের অবস্থায় ফিরে যাবে
   }
   updateRow(idx, 'code', val);
 }
@@ -1005,7 +1005,7 @@ async function updateRow(idx, field, val){
   SAVING_IN_PROGRESS = true;
   await saveState();
   SAVING_IN_PROGRESS = false;
-  renderTab();
+  renderTabPreservingFocus();
 }
 function fillRemarks(){
   const entry = getMonthEntry(CURRENT_MONTH);
