@@ -95,6 +95,7 @@
   th,td{border:1px solid var(--paper-line);padding:6px 6px;text-align:center;vertical-align:middle;}
   thead th{background:var(--green-soft);color:var(--green-deep);font-weight:700;font-size:11px;}
   .select-col .picker-btn{font-size:11.5px;width:100%;}
+  .select-col .picker-mobile{display:none;}
   .select-col{min-width:125px;}
   .remark-col{min-width:230px;}
   .village-col{min-width:105px;}
@@ -119,7 +120,12 @@
     .report-sheet colgroup col:nth-child(15){width:26%!important;}
     .report-sheet colgroup col:nth-child(16){width:15%!important;}
     .select-col{min-width:0;}
-    .select-col .picker-btn{font-size:9.5px;padding:5px 7px;}
+    /* মোবাইলে আগের সুন্দরভাবে কাজ করা native <select> ফিরিয়ে আনা হচ্ছে — ডেস্কটপের কাস্টম পপ-আপ
+       পিকারটা (যেটা এখানে বেশি জায়গা নেয়) মোবাইলে দেখানো হচ্ছে না। দুটো ব্যবস্থাই একসাথে DOM-এ
+       আছে (একটাতে টাইপ করলে row.code বদলায়, যেটাই স্ক্রিনে দেখা যাচ্ছে সেটাই সবসময় renderTab()-এর
+       পর সঠিক মান দিয়ে নতুন করে তৈরি হয়) — এখানে শুধু CSS দিয়ে কোনটা দেখানো হবে ঠিক করা হচ্ছে। */
+    .select-col .picker-desktop{display:none;}
+    .select-col .picker-mobile{display:block;width:100%;font-size:9.5px;padding:5px 4px;}
     .remark-col{min-width:0;}
     .owner-col{min-width:0;}
     .block-col{min-width:0;}
@@ -947,7 +953,11 @@ function entryTabHTML(){
       <td>${info?esc(info.row.purpose):(row.code==='সি সি সেবা'?'সি সি সেবা':dash)}</td>
       <td class="remark-col"><input type="text" class="no-print" id="row-remark-${idx}" value="${esc(row.remark)}" placeholder="—" oninput="updateRow(${idx},'remark',this.value)"><span class="print-only">${row.remark?esc(row.remark):'—'}</span></td>
       <td class="no-print select-col">
-        <button type="button" class="picker-btn" id="row-select-${idx}" onclick="openCodePicker(${idx})">${row.code ? esc(row.code) : '<span class="muted">--নির্বাচন--</span>'}</button>
+        <button type="button" class="picker-btn picker-desktop" id="row-select-${idx}" onclick="openCodePicker(${idx})">${row.code ? esc(row.code) : '<span class="muted">--নির্বাচন--</span>'}</button>
+        <select class="picker-mobile" id="row-select-mobile-${idx}" onchange="handleCodeChange(${idx},this.value)">
+          <option value="">--নির্বাচন--</option>
+          ${getRowOptionsFor(entry, row).map(o=>`<option value="${esc(o)}" ${row.code===o?'selected':''}>${esc(o)}</option>`).join('')}
+        </select>
       </td>
     </tr>`;
   }).join('');
