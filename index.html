@@ -86,10 +86,11 @@
 
   /* ================= রিপোর্ট টেবিল স্ক্রিন-ফিট (কোনো Horizontal Scroll ছাড়াই) =================
      যেকোনো কম্পিউটার স্ক্রিনে টেবিলটা তার স্বাভাবিক (natural) প্রস্থে যদি কন্টেইনারের চেয়ে চওড়া হয়ে যায়,
-     তাহলে fitReportTable() (JS) পুরো টেবিলটাকে (তারিখ কলামসহ, কোনো কলাম না লুকিয়েই) একটা
-     transform:scale() দিয়ে ছোট করে পুরোপুরি স্ক্রিনে বসিয়ে দেয় — ফলে পাশে স্ক্রল করার দরকার পড়ে না।
+     তাহলে fitReportTable() (JS) পুরো টেবিলটাকে (তারিখ কলামসহ, কোনো কলাম না লুকিয়েই) CSS zoom দিয়ে
+     ছোট করে পুরোপুরি স্ক্রিনে বসিয়ে দেয় — ফলে পাশে স্ক্রল করার দরকার পড়ে না। (আগে transform:scale()
+     ব্যবহার করা হয়েছিল, কিন্তু তাতে ডেস্কটপে "নির্বাচন" কলামের <select> ড্রপডাউন ভুল জায়গায়/দেরিতে
+     খুলছিল — তাই zoom-এ পাল্টানো হয়েছে, যেটা আসল লেআউট রিফ্লো করে বলে native ড্রপডাউন ঠিকমতো কাজ করে।)
      .table-wrap-এর overflow-x:auto শুধু নিরাপত্তার জন্য রাখা (JS বন্ধ থাকলে ফলব্যাক হিসেবে)। */
-  .report-table-scale{transform-origin:top left;}
   table{width:100%;border-collapse:collapse;font-size:12.5px;}
   th,td{border:1px solid var(--paper-line);padding:6px 6px;text-align:center;vertical-align:middle;}
   thead th{background:var(--green-soft);color:var(--green-deep);font-weight:700;font-size:11px;}
@@ -191,11 +192,11 @@
        শতাংশ-ভিত্তিক প্রস্থের সাথে সংঘর্ষ বেঁধে কলাম একে অপরের উপর উঠে যায় (ওভারল্যাপ) */
     .select-col,.remark-col,.village-col,.owner-col,.block-col{min-width:0!important;}
     td.remark-col{text-align:center;}
-    .table-wrap{border:1.25px solid #000;padding:2px;height:auto!important;overflow:visible!important;}
-    /* স্ক্রিনে দেখানোর screen-fit স্কেল (transform, ইনলাইন স্টাইল হিসেবে বসানো) প্রিন্টে যেন কোনোভাবেই
+    .table-wrap{border:1.25px solid #000;padding:2px;overflow:visible!important;}
+    /* স্ক্রিনে দেখানোর screen-fit zoom (ইনলাইন স্টাইল হিসেবে বসানো) প্রিন্টে যেন কোনোভাবেই
        প্রভাব না ফেলে — printReport() আসল লাইভ পাতাটাই প্রিন্ট করে (অফস্ক্রিন ক্লোনটা শুধু ফন্ট-সাইজ/
        সারি-উচ্চতা মাপার জন্য ব্যবহৃত হয়, প্রিন্টের আগেই সরিয়ে ফেলা হয়) */
-    .report-table-scale{transform:none!important;}
+    .report-table-scale{zoom:1!important;}
     thead th{font-size:9px;font-weight:400;line-height:1.15;padding:3px 2px;background:#e8e8e8!important;color:#000!important;}
     th,td{padding:3px 4px;line-height:1.25;overflow-wrap:normal;word-break:keep-all;border:0.5px solid #555;vertical-align:middle;}
     tbody tr:nth-child(even):not(.off-day){background:#fff!important;}
@@ -233,8 +234,8 @@
   .pdf-export-mode .toast{display:none!important;}
   .pdf-export-mode .select-col,.pdf-export-mode .remark-col,.pdf-export-mode .village-col,.pdf-export-mode .owner-col,.pdf-export-mode .block-col{min-width:0!important;}
   .pdf-export-mode td.remark-col{text-align:center;}
-  .pdf-export-mode .table-wrap{border:1.25px solid #000;padding:2px;height:auto!important;overflow:visible!important;}
-  .pdf-export-mode .report-table-scale{transform:none!important;}
+  .pdf-export-mode .table-wrap{border:1.25px solid #000;padding:2px;overflow:visible!important;}
+  .pdf-export-mode .report-table-scale{zoom:1!important;}
   .pdf-export-mode thead th{font-size:9px;font-weight:400;line-height:1.15;padding:3px 2px;background:#e8e8e8!important;color:#000!important;}
   .pdf-export-mode th,.pdf-export-mode td{padding:3px 4px;line-height:1.25;overflow-wrap:normal;word-break:keep-all;border:0.15px solid #000;vertical-align:middle;}
   .pdf-export-mode tbody tr:nth-child(even):not(.off-day){background:#fff!important;}
@@ -835,27 +836,27 @@ function renderTab(){
 /* ================= রিপোর্ট টেবিল স্ক্রিন-ফিট (Horizontal Scroll ছাড়াই) =================
    .select-col/.remark-col/.village-col/.owner-col ইত্যাদি কলামের min-width-এর কারণে টেবিলের
    স্বাভাবিক (natural) প্রস্থ কন্টেইনারের চেয়ে বেশি হয়ে গেলে, আগে শুধু পাশে স্ক্রল করে দেখা যেত।
-   এখন সেই "উপচে যাওয়া" প্রস্থ মেপে পুরো টেবিলটাকেই (তারিখ কলামসহ, কোনো কলাম না লুকিয়ে) একটা
-   transform:scale() দিয়ে ঠিক কন্টেইনারের প্রস্থে বসিয়ে দেওয়া হয় — ফলে যেকোনো কম্পিউটার স্ক্রিনে
-   পুরো রিপোর্ট এক নজরে, কোনো scroll ছাড়াই দেখা যায়। (মোবাইলের জন্য আলাদা @media কলাম-লুকানোর
-   নিয়মও এখনও চালু আছে — সেটার উপরেই এই স্কেলিং বাড়তি সুরক্ষা হিসেবে কাজ করে।) */
+   এখন সেই "উপচে যাওয়া" প্রস্থ মেপে পুরো টেবিলটাকেই (তারিখ কলামসহ, কোনো কলাম না লুকিয়ে) ছোট করে
+   ঠিক কন্টেইনারের প্রস্থে বসিয়ে দেওয়া হয় — ফলে যেকোনো কম্পিউটার স্ক্রিনে পুরো রিপোর্ট এক নজরে,
+   কোনো scroll ছাড়াই দেখা যায়।
+   টীকা: প্রথমে এখানে CSS transform:scale() ব্যবহার করা হয়েছিল, কিন্তু ডেস্কটপে তাতে "নির্বাচন"
+   কলামের ড্রপডাউন (native <select>) ভুল জায়গায়/দেরিতে খুলছিল — কারণ transform থাকা কোনো
+   এলিমেন্টের ভেতরের <select>-এর ব্রাউজার-নিজস্ব পপআপ পজিশনিং ব্রাউজারে ঠিকমতো কাজ করে না।
+   তাই transform-এর বদলে CSS zoom ব্যবহার করা হচ্ছে — এটা আসল লেআউট রিফ্লো করে (শুধু পেইন্ট-লেভেল
+   ভিজ্যুয়াল স্কেল নয়), তাই <select> ড্রপডাউন এবং ইনপুট ফোকাস/কার্সার — দুটোই স্বাভাবিকভাবে কাজ করে। */
 function fitReportTable(){
   const wrap = document.getElementById('reportTableWrap');
   const table = document.getElementById('reportTableScale');
   if(!wrap || !table) return;
-  // আগে স্কেল রিসেট করে টেবিলের প্রকৃত (unscaled) প্রস্থ/উচ্চতা মাপা হচ্ছে
-  table.style.transform = 'none';
-  wrap.style.height = '';
+  // আগে zoom রিসেট করে টেবিলের প্রকৃত (unzoomed) প্রস্থ মাপা হচ্ছে
+  table.style.zoom = '1';
   const naturalWidth = table.scrollWidth;
-  const naturalHeight = table.scrollHeight;
   const availWidth = wrap.clientWidth;
   if(availWidth > 0 && naturalWidth > availWidth + 0.5){
     const scale = availWidth / naturalWidth;
-    table.style.transform = 'scale(' + scale + ')';
-    wrap.style.height = Math.ceil(naturalHeight * scale) + 'px';
+    table.style.zoom = String(scale);
   } else {
-    table.style.transform = 'none';
-    wrap.style.height = '';
+    table.style.zoom = '1';
   }
 }
 let _fitReportResizeTimer = null;
@@ -1101,11 +1102,11 @@ function buildOffscreenClone(){
   clone.removeAttribute('id');
   clone.style.width = '198mm';
   clone.style.maxWidth = '198mm';
-  // স্ক্রিনে দেখানোর জন্য টেবিলে যে screen-fit scale (transform) বসানো থাকতে পারে (fitReportTable),
+  // স্ক্রিনে দেখানোর জন্য টেবিলে যে screen-fit zoom বসানো থাকতে পারে (fitReportTable),
   // সেটা প্রিন্ট/PDF ক্লোনে থেকে গেলে autofitCells/stretchRowsToFillPage-এর মাপজোখ ভুল হয়ে যাবে —
-  // তাই ক্লোনের ভেতরে সবসময় পূর্ণ আকারে (কোনো স্কেল ছাড়া) রিসেট করা হচ্ছে
+  // তাই ক্লোনের ভেতরে সবসময় পূর্ণ আকারে (zoom:1) রিসেট করা হচ্ছে
   const cloneTable = clone.querySelector('#reportTableScale, .report-table-scale');
-  if(cloneTable){ cloneTable.style.transform = 'none'; cloneTable.removeAttribute('id'); }
+  if(cloneTable){ cloneTable.style.zoom = '1'; cloneTable.removeAttribute('id'); }
   const cloneWrap = clone.querySelector('.table-wrap');
   if(cloneWrap) cloneWrap.style.height = '';
   const wrap = document.createElement('div');
