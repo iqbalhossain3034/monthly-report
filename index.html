@@ -94,7 +94,7 @@
   table{width:100%;border-collapse:collapse;font-size:12.5px;}
   th,td{border:1px solid var(--paper-line);padding:6px 6px;text-align:center;vertical-align:middle;}
   thead th{background:var(--green-soft);color:var(--green-deep);font-weight:700;font-size:11px;}
-  .select-col select{font-size:11.5px;width:100%;}
+  .select-col .picker-btn{font-size:11.5px;width:100%;}
   .select-col{min-width:125px;}
   .remark-col{min-width:230px;}
   .village-col{min-width:105px;}
@@ -119,7 +119,7 @@
     .report-sheet colgroup col:nth-child(15){width:26%!important;}
     .report-sheet colgroup col:nth-child(16){width:15%!important;}
     .select-col{min-width:0;}
-    .select-col select{font-size:9.5px;}
+    .select-col .picker-btn{font-size:9.5px;padding:5px 7px;}
     .remark-col{min-width:0;}
     .owner-col{min-width:0;}
     .block-col{min-width:0;}
@@ -279,11 +279,48 @@
     .letterhead{flex-direction:column;text-align:center;}
     table{font-size:11px;}
   }
+
+  /* ================= "নির্বাচন" কলামের কাস্টম পপ-আপ পিকার =================
+     আগে এখানে native <select> ব্যবহার হতো — ডেস্কটপে zoom/স্কেলিং-এর সাথে native ড্রপডাউনের
+     পপআপ পজিশনিং ঠিকমতো মেলে না (ভুল জায়গায় খোলে, ভুল অপশনে ক্লিক পড়ে যাওয়ার ঝুঁকি থাকে)।
+     তাই এখন এটা একটা বাটন — ক্লিক করলে স্ক্রিনের মাঝখানে (fixed position, টেবিলের স্ক্রল/জুম
+     অবস্থা যাই থাকুক না কেন) একটা সার্চযোগ্য তালিকা পপ-আপ হয়ে খোলে। */
+  .picker-btn{
+    width:100%;text-align:left;background:#fffdf8;border:1px solid var(--paper-line);border-radius:7px;
+    padding:6px 9px;font:inherit;font-size:11.5px;color:var(--ink);cursor:pointer;
+  }
+  .picker-btn:hover{border-color:var(--green-mid);}
+  .picker-overlay{
+    position:fixed;inset:0;background:rgba(18,24,32,.5);z-index:2000;
+    display:flex;align-items:center;justify-content:center;padding:16px;
+  }
+  .picker-modal{
+    background:#fff;border-radius:14px;box-shadow:var(--shadow);width:100%;max-width:380px;
+    max-height:80vh;display:flex;flex-direction:column;overflow:hidden;
+  }
+  .picker-modal-head{
+    display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px;
+    font-family:'Noto Serif Bengali',serif;color:var(--green-deep);flex:0 0 auto;
+  }
+  .picker-close-btn{
+    border:none;background:var(--green-soft);color:var(--green-deep);width:28px;height:28px;
+    border-radius:50%;font-size:14px;cursor:pointer;line-height:1;
+  }
+  .picker-close-btn:hover{background:var(--green-deep);color:#fff;}
+  .picker-search{margin:0 16px 10px;width:auto;flex:0 0 auto;}
+  .picker-list{overflow-y:auto;flex:1 1 auto;padding:0 8px 10px;}
+  .picker-option{
+    padding:9px 10px;border-radius:8px;font-size:13px;cursor:pointer;
+  }
+  .picker-option:hover{background:var(--green-soft);}
+  .picker-option.selected{background:var(--green-deep);color:#f4efdf;font-weight:600;}
+  .picker-empty{padding:16px;text-align:center;color:#8a8471;font-size:12.5px;}
 </style>
 </head>
 <body>
 <div class="app" id="app"></div>
 <div class="toast" id="toast"></div>
+<div id="codePickerRoot"></div>
 
 <script>
 /* =========================================================
@@ -878,7 +915,6 @@ function entryTabHTML(){
   const isSubmitted = !!STATE.submitted[CURRENT_MONTH];
   const isViewer = CURRENT_ROLE==='viewer';
   const remarksDone = remarksFullyFilled(CURRENT_MONTH);
-  const opts = optionsForCategory(entry.category);
   const w = STATE.worker;
   const hMap = holidayMap();
   const dash = '<span class="muted">----</span>';
@@ -891,9 +927,8 @@ function entryTabHTML(){
     const info = lookupByCode(row.code);
     const offRow = isFriday || row.code==='----' || holiday;
     const isActive = entry.activeIdx===idx;
-    // এই সারির আগে বাছাই করা মান যদি বর্তমান "Fill Type" ফিল্টারের লিস্টে না থাকে,
-    // তাহলেও সেটাকে লিস্টে যোগ করে রাখা হয় — যাতে Fill Type বদলালে আগের সিলেকশন হারিয়ে না যায়/না লুকায়
-    const rowOpts = (row.code && !opts.includes(row.code)) ? [row.code, ...opts] : opts;
+    // এই সারির জন্য ড্রপডাউন/পিকারের অপশন তালিকা getRowOptionsFor()-এ কেন্দ্রীভূত করা হয়েছে
+    // (নিচের openCodePicker()-ও একই ফাংশন ব্যবহার করে, তাই দুই জায়গায় লজিক আলাদা হয়ে যাওয়ার সুযোগ নেই)
     return `
     <tr class="${offRow?'off-day':''} ${isActive?'active-row':''}">
       <td>${bnNum(d.getDate())}-${bnNum(m)}-${bnNum(y)}</td>
@@ -912,10 +947,7 @@ function entryTabHTML(){
       <td>${info?esc(info.row.purpose):(row.code==='সি সি সেবা'?'সি সি সেবা':dash)}</td>
       <td class="remark-col"><input type="text" class="no-print" id="row-remark-${idx}" value="${esc(row.remark)}" placeholder="—" oninput="updateRow(${idx},'remark',this.value)"><span class="print-only">${row.remark?esc(row.remark):'—'}</span></td>
       <td class="no-print select-col">
-        <select id="row-select-${idx}" onchange="handleCodeChange(${idx},this.value)">
-          <option value="">--নির্বাচন--</option>
-          ${rowOpts.map(o=>`<option value="${esc(o)}" ${row.code===o?'selected':''}>${esc(o)}</option>`).join('')}
-        </select>
+        <button type="button" class="picker-btn" id="row-select-${idx}" onclick="openCodePicker(${idx})">${row.code ? esc(row.code) : '<span class="muted">--নির্বাচন--</span>'}</button>
       </td>
     </tr>`;
   }).join('');
@@ -1040,12 +1072,85 @@ function entryTabHTML(){
 }
 function changeMonth(v){ CURRENT_MONTH = v; renderTab(); }
 function changeCategory(v){ getMonthEntry(CURRENT_MONTH).category = v; saveState(); renderTab(); }
+/* ================= "নির্বাচন" কলামের কাস্টম পপ-আপ পিকার =================
+   native <select>-এর বদলে এই পিকারটা স্ক্রিনের ঠিক মাঝখানে (position:fixed, টেবিলের zoom/স্ক্রল
+   অবস্থা যাই থাকুক না কেন) খোলে, তাই ডেস্কটপে ভুল জায়গায় খুলে ভুল অপশনে ক্লিক পড়ে যাওয়ার সমস্যা
+   থাকে না। সঙ্গে একটা সার্চ বক্সও আছে — অনেকগুলো কেন্দ্র থাকলে দ্রুত খুঁজে বের করা যায়। */
+function getRowOptionsFor(entry, row){
+  const opts = optionsForCategory(entry.category);
+  // এই সারির আগে বাছাই করা মান যদি বর্তমান "Fill Type" ফিল্টারের লিস্টে না থাকে,
+  // তাহলেও সেটাকে লিস্টে যোগ করে রাখা হয় — যাতে Fill Type বদলালে আগের সিলেকশন হারিয়ে না যায়/না লুকায়
+  return (row.code && !opts.includes(row.code)) ? [row.code, ...opts] : opts;
+}
+let CODE_PICKER_STATE = null; // {idx, opts}
+function openCodePicker(idx){
+  const entry = getMonthEntry(CURRENT_MONTH);
+  const row = entry.rows[idx];
+  if(!row) return;
+  CODE_PICKER_STATE = {idx, opts: getRowOptionsFor(entry, row)};
+  renderCodePickerModal();
+}
+function closeCodePicker(){
+  CODE_PICKER_STATE = null;
+  document.removeEventListener('keydown', pickerEscHandler);
+  const root = document.getElementById('codePickerRoot');
+  if(root) root.innerHTML = '';
+}
+function pickerEscHandler(e){ if(e.key==='Escape') closeCodePicker(); }
+function renderCodePickerModal(){
+  const root = document.getElementById('codePickerRoot');
+  if(!root || !CODE_PICKER_STATE) return;
+  const entry = getMonthEntry(CURRENT_MONTH);
+  const row = entry.rows[CODE_PICKER_STATE.idx];
+  root.innerHTML = `
+    <div class="picker-overlay" onclick="if(event.target===this) closeCodePicker()">
+      <div class="picker-modal" role="dialog" aria-modal="true">
+        <div class="picker-modal-head">
+          <strong>ভ্রমণের উদ্দেশ্য নির্বাচন করুন</strong>
+          <button type="button" class="picker-close-btn" onclick="closeCodePicker()">✕</button>
+        </div>
+        <input type="text" id="pickerSearchInput" class="picker-search" placeholder="🔍 খুঁজুন..." oninput="filterCodePicker(this.value)">
+        <div class="picker-list" id="pickerOptionsList" onclick="handlePickerOptionClick(event)">
+          ${renderPickerOptionsHTML(row.code, CODE_PICKER_STATE.opts, '')}
+        </div>
+      </div>
+    </div>`;
+  document.addEventListener('keydown', pickerEscHandler);
+  const inp = document.getElementById('pickerSearchInput');
+  if(inp) inp.focus();
+}
+function renderPickerOptionsHTML(currentCode, opts, search){
+  const term = (search||'').trim().toLowerCase();
+  const list = ['', ...opts]; // '' মানে "--নির্বাচন--" (খালি করে দেওয়া)
+  const filtered = term ? list.filter(o => (o===''?'--নির্বাচন--':o).toLowerCase().includes(term)) : list;
+  if(filtered.length===0) return `<div class="picker-empty">কোনো ফলাফল নেই</div>`;
+  return filtered.map(o=>{
+    const label = o===''?'--নির্বাচন--':esc(o);
+    const isSelected = o===(currentCode||'');
+    return `<div class="picker-option${isSelected?' selected':''}" data-value="${esc(o)}">${label}</div>`;
+  }).join('');
+}
+function filterCodePicker(term){
+  if(!CODE_PICKER_STATE) return;
+  const entry = getMonthEntry(CURRENT_MONTH);
+  const row = entry.rows[CODE_PICKER_STATE.idx];
+  const listEl = document.getElementById('pickerOptionsList');
+  if(listEl) listEl.innerHTML = renderPickerOptionsHTML(row.code, CODE_PICKER_STATE.opts, term);
+}
+function handlePickerOptionClick(e){
+  const opt = e.target.closest('.picker-option');
+  if(!opt) return;
+  const value = opt.dataset.value || '';
+  const idx = CODE_PICKER_STATE ? CODE_PICKER_STATE.idx : null;
+  closeCodePicker();
+  if(idx!=null) handleCodeChange(idx, value);
+}
 // জমা দেওয়া (submitted) রিপোর্টের ক্ষেত্রে "নির্বাচন" ড্রপডাউন বদলানোর আগে সতর্ক করা হয়,
 // যাতে ভুলবশত ট্যাপ করে আগে থেকে জমা দেওয়া ডেটা বদলে না যায়
 function handleCodeChange(idx, val){
   if(STATE.submitted[CURRENT_MONTH]){
     const proceed = confirm('এই রিপোর্টটি ইতিমধ্যে জমা দেওয়া হয়েছে। আপনি কি এই নির্বাচন পরিবর্তন করতে চান?');
-    if(!proceed){ renderTabPreservingFocus(); return; } // বাতিল করলে ড্রপডাউনের ভিজ্যুয়াল পরিবর্তনও আগের অবস্থায় ফিরে যাবে
+    if(!proceed){ renderTabPreservingFocus(); return; } // বাতিল করলে দৃশ্যমান পরিবর্তনও আগের অবস্থায় ফিরে যাবে
   }
   updateRow(idx, 'code', val);
 }
