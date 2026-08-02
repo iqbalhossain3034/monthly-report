@@ -1093,6 +1093,7 @@ function getRowOptionsFor(entry, row){
   return (row.code && !opts.includes(row.code)) ? [row.code, ...opts] : opts;
 }
 let CODE_PICKER_STATE = null; // {idx, opts}
+let CODE_PICKER_OPENED_AT = 0;
 function openCodePicker(idx){
   const entry = getMonthEntry(CURRENT_MONTH);
   const row = entry.rows[idx];
@@ -1106,6 +1107,16 @@ function closeCodePicker(){
   const root = document.getElementById('codePickerRoot');
   if(root) root.innerHTML = '';
 }
+// ব্যাকড্রপে (মডালের বাইরে) ক্লিক করলে বন্ধ হয়ে যায় — কিন্তু ডেস্কটপে zoom-স্কেল করা টেবিলের ভেতরের
+// বাটনে ক্লিক করলে কিছু ব্রাউজারে একটা "ইকো/ডুপ্লিকেট" ক্লিক ইভেন্ট তৈরি হয়, যেটা তখনই পুরো স্ক্রিনজুড়ে
+// থাকা ব্যাকড্রপে গিয়ে পড়ে এবং পপ-আপ খোলার সাথে সাথেই বন্ধ করে দেয় (২-৩ বার ট্রাই করার পর ঠিকভাবে
+// খোলে থাকার অভিযোগ এখান থেকেই আসছিল)। তাই খোলার প্রথম মুহূর্তে (৩৫০ মিলিসেকেন্ড) ব্যাকড্রপ-ক্লিক
+// উপেক্ষা করা হচ্ছে — এরপর স্বাভাবিকভাবে বাইরে ক্লিক করলে ঠিকই বন্ধ হয়ে যাবে।
+function handlePickerOverlayClick(e){
+  if(e.target !== e.currentTarget) return; // শুধু ব্যাকড্রপে ক্লিক হলেই, মডালের ভেতরের কিছুতে না
+  if(Date.now() - CODE_PICKER_OPENED_AT < 350) return;
+  closeCodePicker();
+}
 function pickerEscHandler(e){ if(e.key==='Escape') closeCodePicker(); }
 function renderCodePickerModal(){
   const root = document.getElementById('codePickerRoot');
@@ -1113,7 +1124,7 @@ function renderCodePickerModal(){
   const entry = getMonthEntry(CURRENT_MONTH);
   const row = entry.rows[CODE_PICKER_STATE.idx];
   root.innerHTML = `
-    <div class="picker-overlay" onclick="if(event.target===this) closeCodePicker()">
+    <div class="picker-overlay" onclick="handlePickerOverlayClick(event)">
       <div class="picker-modal" role="dialog" aria-modal="true">
         <div class="picker-modal-head">
           <strong>ভ্রমণের উদ্দেশ্য নির্বাচন করুন</strong>
@@ -1125,6 +1136,7 @@ function renderCodePickerModal(){
         </div>
       </div>
     </div>`;
+  CODE_PICKER_OPENED_AT = Date.now();
   document.addEventListener('keydown', pickerEscHandler);
   const inp = document.getElementById('pickerSearchInput');
   if(inp) inp.focus();
