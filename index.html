@@ -14,17 +14,17 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
-    --ink:#182a20;
-    --paper:#f6f9f6;
-    --paper-line:#d7e6dc;
-    --green-deep:#00693e;
-    --green-mid:#0f8a52;
-    --green-soft:#e3f3ea;
-    --gold:#b8860b;
-    --gold-soft:#faf1da;
-    --red:#da291c;
-    --red-soft:#fbe6e4;
-    --shadow:0 1px 2px rgba(0,105,62,.08),0 8px 24px rgba(0,105,62,.10);
+    --ink:#1b2430;
+    --paper:#f3f6fb;
+    --paper-line:#d8e0ec;
+    --green-deep:#123a5e;
+    --green-mid:#2f6690;
+    --green-soft:#e2ebf5;
+    --gold:#b5651d;
+    --gold-soft:#f6e6d6;
+    --red:#a13d3d;
+    --red-soft:#f6e3e0;
+    --shadow:0 1px 2px rgba(18,58,94,.07),0 8px 24px rgba(18,58,94,.09);
   }
   *{box-sizing:border-box;}
   body{
@@ -168,7 +168,7 @@
   .report-note{font-size:11.5px;color:#5a5648;margin:14px 0 20px;}
   .report-sign{font-size:13px;line-height:1.9;text-align:right;}
   .sign-row{display:flex;justify-content:flex-end;align-items:flex-end;gap:4px;}
-  .sign-blank{position:relative;display:inline-block;width:170px;border-bottom:1px solid #182a20;height:16px;}
+  .sign-blank{position:relative;display:inline-block;width:170px;border-bottom:1px solid #1b2430;height:16px;}
   .signature-img{display:none;}
   .center-table input{min-width:60px;}
   .print-only{display:none;}
@@ -1839,8 +1839,8 @@ function renderBarChart(data){
     const x = padL + i*gap + (gap-barW)/2;
     const y = padT + chartH - barH;
     const lx = (x+barW/2).toFixed(1), ly = (h-padB+14).toFixed(1);
-    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="#0f8a52" rx="3"/>`;
-    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="11" text-anchor="middle" fill="#00693e" font-weight="700">${bnNum(d.count)}</text>`;
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="#2f6690" rx="3"/>`;
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="11" text-anchor="middle" fill="#123a5e" font-weight="700">${bnNum(d.count)}</text>`;
     labels += `<text x="${lx}" y="${ly}" font-size="10" text-anchor="end" fill="#5a5648" transform="rotate(-40 ${lx} ${ly})">${d.label}</text>`;
   });
   const axisLine = `<line x1="${padL}" y1="${padT+chartH}" x2="${w-padR}" y2="${padT+chartH}" stroke="#d8d2bd" stroke-width="1"/>`;
@@ -1859,15 +1859,15 @@ function renderLineChart(data){
   });
   const pathD = points.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
   const areaD = pathD + ` L ${points[points.length-1].x.toFixed(1)} ${(padT+chartH).toFixed(1)} L ${points[0].x.toFixed(1)} ${(padT+chartH).toFixed(1)} Z`;
-  const dots = points.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#b8860b"/><text x="${p.x.toFixed(1)}" y="${(p.y-10).toFixed(1)}" font-size="11" text-anchor="middle" fill="#b8860b" font-weight="700">${bnNum(p.d.count)}</text>`).join('');
+  const dots = points.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#b5651d"/><text x="${p.x.toFixed(1)}" y="${(p.y-10).toFixed(1)}" font-size="11" text-anchor="middle" fill="#b5651d" font-weight="700">${bnNum(p.d.count)}</text>`).join('');
   const labels = points.map(p=>{
     const lx = p.x.toFixed(1), ly = (h-padB+14).toFixed(1);
     return `<text x="${lx}" y="${ly}" font-size="10" text-anchor="end" fill="#5a5648" transform="rotate(-40 ${lx} ${ly})">${p.d.label}</text>`;
   }).join('');
   const axisLine = `<line x1="${padL}" y1="${padT+chartH}" x2="${w-padR}" y2="${padT+chartH}" stroke="#d8d2bd" stroke-width="1"/>`;
   return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">
-    <path d="${areaD}" fill="#faf1da" opacity="0.6"/>
-    ${axisLine}<path d="${pathD}" fill="none" stroke="#b8860b" stroke-width="2.5"/>${dots}${labels}
+    <path d="${areaD}" fill="#f6e6d6" opacity="0.6"/>
+    ${axisLine}<path d="${pathD}" fill="none" stroke="#b5651d" stroke-width="2.5"/>${dots}${labels}
   </svg>`;
 }
 function renderPieChart(ipc, epi){
@@ -1889,19 +1889,19 @@ function renderPieChart(ipc, epi){
   return `
   <div style="display:flex;align-items:center;gap:28px;flex-wrap:wrap;justify-content:center;">
     <svg viewBox="0 0 220 220" style="width:200px;height:200px;flex:0 0 auto;" xmlns="http://www.w3.org/2000/svg">
-      <path d="${slicePath(0, ipcAngle)}" fill="#0f8a52"/>
-      <path d="${slicePath(ipcAngle, 360)}" fill="#b8860b"/>
+      <path d="${slicePath(0, ipcAngle)}" fill="#2f6690"/>
+      <path d="${slicePath(ipcAngle, 360)}" fill="#b5651d"/>
       <circle cx="110" cy="110" r="52" fill="#fff"/>
-      <text x="110" y="104" text-anchor="middle" font-size="12" fill="#182a20" font-weight="600">সর্বমোট</text>
-      <text x="110" y="125" text-anchor="middle" font-size="17" fill="#182a20" font-weight="800">${bnNum(total)}</text>
+      <text x="110" y="104" text-anchor="middle" font-size="12" fill="#1b2430" font-weight="600">সর্বমোট</text>
+      <text x="110" y="125" text-anchor="middle" font-size="17" fill="#1b2430" font-weight="800">${bnNum(total)}</text>
     </svg>
     <div style="font-size:14px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        <span style="width:14px;height:14px;background:#0f8a52;border-radius:3px;display:inline-block;"></span>
+        <span style="width:14px;height:14px;background:#2f6690;border-radius:3px;display:inline-block;"></span>
         <span>IPC — <strong>${bnNum(ipc)}</strong> (${bnNum(ipcPct)}%)</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="width:14px;height:14px;background:#b8860b;border-radius:3px;display:inline-block;"></span>
+        <span style="width:14px;height:14px;background:#b5651d;border-radius:3px;display:inline-block;"></span>
         <span>EPI — <strong>${bnNum(epi)}</strong> (${bnNum(epiPct)}%)</span>
       </div>
     </div>
@@ -1914,14 +1914,14 @@ function dashboardTabHTML(){
   const totalEPI = monthly.reduce((s,d)=>s+d.epi, 0);
   const houseSums = allRowsFlat().reduce((a,r)=>{a.newC+=r.newC;a.cancelC+=r.cancelC;a.total+=r.total;return a;}, {newC:0,cancelC:0,total:0});
   const programSeries = [
-    {key:'count', label:'সর্বমোট কর্মসূচি', color:'#0f8a52'},
-    {key:'ipc', label:'IPC', color:'#b8860b'},
-    {key:'epi', label:'EPI', color:'#da291c'}
+    {key:'count', label:'সর্বমোট কর্মসূচি', color:'#2f6690'},
+    {key:'ipc', label:'IPC', color:'#b5651d'},
+    {key:'epi', label:'EPI', color:'#a13d3d'}
   ];
   const houseSeries = [
-    {key:'total', label:'সর্বমোট পরিদর্শিত বাড়ি', color:'#0f8a52'},
-    {key:'ipc', label:'IPC-এর আওতায়', color:'#b8860b'},
-    {key:'epi', label:'EPI-এর আওতায়', color:'#da291c'}
+    {key:'total', label:'সর্বমোট পরিদর্শিত বাড়ি', color:'#2f6690'},
+    {key:'ipc', label:'IPC-এর আওতায়', color:'#b5651d'},
+    {key:'epi', label:'EPI-এর আওতায়', color:'#a13d3d'}
   ];
   return `
   <div class="card" style="background:var(--green-soft);border:1px solid var(--green-deep);">
