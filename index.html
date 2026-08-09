@@ -144,12 +144,13 @@
      যায় এবং নতুন Row হাইলাইট হয়, একই সাথে একাধিক Row কখনোই হাইলাইট থাকে না। শুধু Visual —
      এর ফলে Row-এর Data/Formula/Dropdown মান কোনোভাবেই বদলায় না। off-day (ছুটির দিন) সারিতেও
      Hover কাজ করে, যাতে বড় রিপোর্টেও Cursor কোন সারিতে আছে সহজেই বোঝা যায়।
-     রং "মাসিক রিপোর্ট" ট্যাব বাটনের কালার স্কিম অনুযায়ী — var(--green-deep) accent-এর সাথে
-     var(--green-soft) হালকা টিন্ট (অ্যাক্টিভ ট্যাব বাটনে যেমন --green-deep ব্যাকগ্রাউন্ড ব্যবহৃত হয়,
-     সারিতে সরাসরি সেই গাঢ় রং বসালে লেখা পড়া কঠিন হয়ে যেত, তাই এর হালকা টিন্ট সংস্করণ ব্যবহার করা হয়েছে)। */
+     রং একদম উপরের Letterhead-এ (গণপ্রজাতন্ত্রী বাংলাদেশ সরকার ব্যানারে) ব্যবহৃত সেই একই
+     gradient — linear-gradient(135deg,var(--green-deep),var(--green-mid)) — সরাসরি বসানো হয়েছে,
+     সাথে Letterhead-এর মতোই হালকা ক্রিম রঙের (#f4efdf) লেখা, যাতে গাঢ় ব্যাকগ্রাউন্ডেও স্পষ্ট পড়া যায়। */
   @media (hover:hover){
-    tbody tr:hover{background:var(--green-soft)!important;box-shadow:inset 3px 0 0 var(--green-deep);}
-    tbody tr:hover td{color:var(--green-deep);font-weight:600;}
+    tbody tr:hover{background:linear-gradient(135deg,var(--green-deep),var(--green-mid))!important;box-shadow:none;}
+    tbody tr:hover td{color:#f4efdf;font-weight:600;}
+    tbody tr:hover td .muted{color:#f4efdf!important;opacity:.85;}
     tbody tr:hover td.select-col{background:transparent!important;}
   }
 
