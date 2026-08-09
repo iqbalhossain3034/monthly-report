@@ -137,6 +137,22 @@
   tbody tr:focus-within td{color:var(--green-deep);font-weight:600;}
   tbody tr.active-row{background:#d3e3f7!important;box-shadow:inset 3px 0 0 var(--green-mid);}
   tbody tr.active-row td{color:var(--green-deep);font-weight:600;}
+
+  /* ================= Row Hover Highlight (Cursor অনুসরণ করে সম্পূর্ণ Row Highlight) =================
+     Cursor যে Row-এর উপরে (যেকোনো Column, Select-col সহ) থাকবে, সেই সম্পূর্ণ Row-টি হাইলাইট হবে।
+     এটি pure CSS :hover ভিত্তিক — তাই Cursor অন্য Row-তে গেলে আগের Row-এর হাইলাইট নিজে থেকেই সরে
+     যায় এবং নতুন Row হাইলাইট হয়, একই সাথে একাধিক Row কখনোই হাইলাইট থাকে না। শুধু Visual —
+     এর ফলে Row-এর Data/Formula/Dropdown মান কোনোভাবেই বদলায় না। off-day (ছুটির দিন) সারিতেও
+     Hover কাজ করে, যাতে বড় রিপোর্টেও Cursor কোন সারিতে আছে সহজেই বোঝা যায়।
+     রং "মাসিক রিপোর্ট" ট্যাব বাটনের কালার স্কিম অনুযায়ী — var(--green-deep) accent-এর সাথে
+     var(--green-soft) হালকা টিন্ট (অ্যাক্টিভ ট্যাব বাটনে যেমন --green-deep ব্যাকগ্রাউন্ড ব্যবহৃত হয়,
+     সারিতে সরাসরি সেই গাঢ় রং বসালে লেখা পড়া কঠিন হয়ে যেত, তাই এর হালকা টিন্ট সংস্করণ ব্যবহার করা হয়েছে)। */
+  @media (hover:hover){
+    tbody tr:hover{background:var(--green-soft)!important;box-shadow:inset 3px 0 0 var(--green-deep);}
+    tbody tr:hover td{color:var(--green-deep);font-weight:600;}
+    tbody tr:hover td.select-col{background:transparent!important;}
+  }
+
   td select, td input{font-size:12px;padding:5px 4px;min-width:64px;}
   .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;}
   .badge.ok{background:var(--green-soft);color:var(--green-deep);}
@@ -209,9 +225,9 @@
     .print-only{display:inline;white-space:normal;overflow-wrap:normal;word-break:keep-all;}
     .muted{color:#000;font-weight:700;}
     td input[type="text"]{border:none;}
-    /* যেকোনো "সর্বশেষ নির্বাচিত সারি" সবুজ হাইলাইট প্রিন্ট/PDF-এ কখনোই দেখানো হবে না */
-    tbody tr.active-row,tbody tr:focus-within{background:transparent!important;box-shadow:none!important;}
-    tbody tr.active-row td,tbody tr:focus-within td{color:inherit!important;font-weight:inherit!important;}
+    /* যেকোনো "সর্বশেষ নির্বাচিত সারি" সবুজ হাইলাইট এবং হোভার হাইলাইট প্রিন্ট/PDF-এ কখনোই দেখানো হবে না */
+    tbody tr.active-row,tbody tr:focus-within,tbody tr:hover{background:transparent!important;box-shadow:none!important;}
+    tbody tr.active-row td,tbody tr:focus-within td,tbody tr:hover td{color:inherit!important;font-weight:inherit!important;}
     /* প্রতিটি ঘরের প্রকৃত ফন্ট-সাইজ/wrap (autofitCells) এবং প্রতিটি সারির উচ্চতা (stretchRowsToFillPage)
        আগে থেকে মেপে --fit-size/--fit-wrap/--row-h কাস্টম প্রপার্টি হিসেবে বসানো থাকে; সেট করা না থাকলে যুক্তিসঙ্গত ডিফল্টে ফিরে যাবে */
     tbody td{font-size:var(--fit-size, 12.5px);white-space:var(--fit-wrap, nowrap);}
@@ -245,8 +261,8 @@
   .pdf-export-mode thead th{font-size:9px;font-weight:400;line-height:1.15;padding:3px 2px;background:#e8e8e8!important;color:#000!important;}
   .pdf-export-mode th,.pdf-export-mode td{padding:3px 4px;line-height:1.25;overflow-wrap:normal;word-break:keep-all;border:0.15px solid #000;vertical-align:middle;}
   .pdf-export-mode tbody tr:nth-child(even):not(.off-day){background:#fff!important;}
-  .pdf-export-mode tbody tr.active-row,.pdf-export-mode tbody tr:focus-within{background:transparent!important;box-shadow:none!important;}
-  .pdf-export-mode tbody tr.active-row td,.pdf-export-mode tbody tr:focus-within td{color:inherit!important;font-weight:inherit!important;}
+  .pdf-export-mode tbody tr.active-row,.pdf-export-mode tbody tr:focus-within,.pdf-export-mode tbody tr:hover{background:transparent!important;box-shadow:none!important;}
+  .pdf-export-mode tbody tr.active-row td,.pdf-export-mode tbody tr:focus-within td,.pdf-export-mode tbody tr:hover td{color:inherit!important;font-weight:inherit!important;}
   .pdf-export-mode .print-only{display:inline;white-space:normal;overflow-wrap:normal;word-break:keep-all;}
   .pdf-export-mode .muted{color:#000;font-weight:700;}
   .pdf-export-mode td input[type="text"]{border:none;}
@@ -350,15 +366,11 @@ function isoDate(d){
 function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
 function nextMonthStr(ym){
   const [y,m] = ym.split('-').map(Number);
-  const d = new Date(y, m, 1); // m ইতিমধ্যে ১-ভিত্তিক, তাই এটাকে পরবর্তী মাসের 0-ভিত্তিক ইনডেক্স হিসেবে ব্যবহার করলেই পরের মাস পাওয়া যায়
+  const d = new Date(y, m, 1);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
 function esc(s){ return (s===undefined||s===null)?'':String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-/* =========================================================
-   ডিফল্ট ছুটির তালিকা (Public Holidays / Database শিট থেকে) —
-   এখন এটা সম্পূর্ণ এডিটেবল, "ছুটির তালিকা" ট্যাব থেকে যোগ/বাদ/পরিবর্তন করা যাবে
-========================================================= */
 function defaultHolidays(){
   const raw = [
     ['2026-02-04','শবে বরাত'],['2026-02-21','শহীদ দিবস ও আন্তর্জাতিক মাতৃভাষা দিবস'],['2026-03-18','শবে কদর'],
@@ -379,13 +391,8 @@ function defaultHolidays(){
   return raw.map(([date,name],i)=>({id:'h'+(i+1), date, name}));
 }
 
-/* =========================================================
-   ডিফল্ট কেন্দ্র তালিকা (Center details শিট, ২৪টি সারি — আপনার
-   আসল আগস্ট-২০২৬ জমাকৃত রিপোর্ট থেকে যাচাই করা তথ্য)
-========================================================= */
 function defaultCenterRows(){
   const raw = [
-    // mouzaNo, mouzaName, villageName, houseFrom, houseTo, blockNo, ownerName, purpose, note
     ['৩৬০','কলাগাছিয়া','হোগলাকান্দি',1,147,'ক/১','সফিকুল বারী','IPC',''],
     ['৩৬০','কলাগাছিয়া','হোগলাকান্দি',148,247,'ক/১','সফিকুল বারী','IPC','A'],
     ['৩৬০','মোল্লারচর','বড় মোল্লারচর',245,440,'খ/১','তোফাজ্জল হোসেন','IPC',''],
@@ -427,9 +434,9 @@ function defaultState(){
     },
     centerRows: defaultCenterRows(),
     holidays: defaultHolidays(),
-    entries:{},      // { 'YYYY-MM': {category, rows:[{date,code,remark}]} }
-    submitted:{},    // { 'YYYY-MM': isoTimestamp }
-    currentMonth: isoDate(new Date()).slice(0,7), // পেজ খোলার সময় ডিফল্ট কোন মাস দেখানো হবে — জমা দেওয়ার পর স্বয়ংক্রিয়ভাবে পরের মাসে বদলে যায় ও মনে রাখে
+    entries:{},
+    submitted:{},
+    currentMonth: isoDate(new Date()).slice(0,7),
     nextRowId: 25,
     nextHolidayId: 49
   };
@@ -441,8 +448,6 @@ function parseRange(s){
   return {from:parseInt(m[1]), to:parseInt(m[2])};
 }
 
-// পুরনো সংস্করণের ব্রাউজার-ডেটা (v1/v2, যেখানে কেন্দ্র তালিকা ও ছুটি এডিট করা যেত না)
-// থাকলে সেটাকে নতুন কাঠামোতে (v3, সম্পূর্ণ এডিটেবল) রূপান্তর করে — এন্ট্রি/ইতিহাস অক্ষুণ্ণ থাকে
 function migrateState(state){
   if(state.version === DATA_VERSION) return state;
   if(!state.worker) state.worker = defaultState().worker;
@@ -470,7 +475,7 @@ function migrateState(state){
     state.nextHolidayId = 49;
   }
   if(state.auth){
-    delete state.auth; // পুরনো প্লেইন-টেক্সট পাসওয়ার্ড ডেটা — Firebase Authentication এখন এটা সামলায়, তাই এটা মুছে দেওয়া হচ্ছে
+    delete state.auth;
   }
   if(!state.currentMonth){
     state.currentMonth = isoDate(new Date()).slice(0,7);
@@ -483,28 +488,18 @@ function migrateState(state){
 
 let STATE = null;
 let ACTIVE_TAB = 'entry';
-let VIEWING_FROM_HISTORY = false; // ইতিহাস থেকে খোলা রিপোর্ট দেখার সময় "ইতিহাস ও সার্চ" ট্যাবটাই হাইলাইট থাকার জন্য
+let VIEWING_FROM_HISTORY = false;
 let AUTHENTICATED = false;
-let CURRENT_ROLE = null; // 'admin' or 'user'
-let AUTH_CHECKED = false; // Firebase প্রথমবার auth অবস্থা জানানোর আগ পর্যন্ত true হবে না
+let CURRENT_ROLE = null;
+let AUTH_CHECKED = false;
 let CURRENT_MONTH = isoDate(new Date()).slice(0,7);
 
-/* ================= লগইন — এখন সম্পূর্ণ Firebase Authentication দিয়ে চালিত =================
-   পাসওয়ার্ড আর কোথাও প্লেইন-টেক্সটে সংরক্ষিত হয় না — Google-এর নিরাপদ Authentication
-   সিস্টেমে থাকে। এখানে শুধু কোন ইমেইলটা কোন ভূমিকায় (এডমিন/ইউজার/ভিউয়ার) আছে সেটা ম্যাপ করা আছে।
-
-   ⚠ তৃতীয় "office" অ্যাকাউন্টটি এখনো Firebase-এ তৈরি করা হয়নি — নিচের OFFICE_EMAIL-এ যেই
-   ইমেইল লেখা আছে, ঠিক সেই ইমেইল ও একটা পাসওয়ার্ড দিয়ে Firebase Console → Authentication →
-   Users থেকে "Add user" চাপুন। এটা কোনো আসল/সচল ইমেইল হতে হবে না (এটাতে মেইল যাবে না),
-   এটা শুধু Firebase-এর লগইন-পরিচয় হিসেবে ব্যবহৃত হবে — লগইন করার সময় ব্যবহারকারী শুধু
-   "office" ইউজারনেম আর যেই পাসওয়ার্ড আপনি Firebase-এ সেট করবেন সেটাই ব্যবহার করবে। */
 const OFFICE_EMAIL = 'office@monthly-report-app-1866a.firebaseapp.com';
 const ROLE_ACCOUNTS = {
   admin:  { email:'iqbal.hossain3034@gmail.com', label:'Iqbal' },
   user:   { email:'shimulmai1722@gmail.com',      label:'Shimul' },
   viewer: { email:OFFICE_EMAIL,                   label:'Office (শুধু দেখা)' }
 };
-// ছোট ইউজারনেম → আসল ইমেইল ম্যাপিং, যাতে প্রতিবার পুরো ইমেইল টাইপ করতে না হয়
 const USERNAME_TO_EMAIL = {
   iqbal:  ROLE_ACCOUNTS.admin.email,
   shimul: ROLE_ACCOUNTS.user.email,
@@ -513,7 +508,7 @@ const USERNAME_TO_EMAIL = {
 function resolveLoginEmail(input){
   const v = (input||'').trim().toLowerCase();
   if(USERNAME_TO_EMAIL[v]) return USERNAME_TO_EMAIL[v];
-  return input.trim(); // ইউজারনেম না মিললে ধরে নেওয়া হচ্ছে হয়তো সরাসরি পুরো ইমেইল টাইপ করা হয়েছে
+  return input.trim();
 }
 function roleForEmail(email){
   if(!email) return null;
@@ -524,12 +519,6 @@ function roleForEmail(email){
   return null;
 }
 
-/* ---------------- persistence ----------------
-   localStorage ব্যবহার করা হচ্ছে (window.storage নয়), কারণ এই ফাইলটা ডাউনলোড করে
-   সাধারণ ব্রাউজারে সরাসরি খোলা হয় — window.storage শুধু Claude.ai-এর চ্যাটের
-   ভেতরে থাকা অবস্থায় কাজ করে, স্বাধীন (standalone) HTML ফাইলে করে না।
-   localStorage একই ব্রাউজার/ডিভাইসে ডেটা ধরে রাখে; ভিন্ন ব্রাউজার/ডিভাইসে
-   নিতে হলে নিচের "ব্যাকআপ ডাউনলোড/ফিরিয়ে আনুন" অপশন ব্যবহার করুন। */
 const STORAGE_KEY = 'mr_state_v1';
 async function loadState(){
   try{
@@ -540,9 +529,6 @@ async function loadState(){
 }
 let LAST_SAVE_ERROR = null;
 
-/* ================= Firebase (Firestore) — সব ইউজারের মধ্যে ডেটা রিয়েল-টাইম শেয়ার =================
-   একটামাত্র শেয়ার্ড ডকুমেন্টে (app_data/shared_state) পুরো STATE JSON আকারে রাখা হয়।
-   কেউ কিছু বদলালেই (নিজে হোক বা অন্য কেউ), সবার স্ক্রিনে সাথে সাথে সেটা প্রতিফলিত হয়। */
 const firebaseConfig = {
   apiKey: "AIzaSyDI1zX3hDRTRbs8Hls7OxP6U0_Le_IEbQw",
   authDomain: "monthly-report-app-1866a.firebaseapp.com",
@@ -553,24 +539,21 @@ const firebaseConfig = {
   measurementId: "G-FZDFY172R4"
 };
 let fbDb = null, fbDocRef = null, fbReady = false;
-let LAST_PUSHED_JSON = null; // আমাদের নিজের সর্বশেষ পাঠানো ডেটা — এর প্রতিধ্বনি (echo) যেন আবার প্রসেস না হয়
+let LAST_PUSHED_JSON = null;
 let fbSyncTimer = null;
-let FIREBASE_STATUS = 'connecting'; // 'connecting' | 'online' | 'offline'
+let FIREBASE_STATUS = 'connecting';
 
 function initFirebase(){
   if(!(window.firebase && firebase.initializeApp)){
-    setTimeout(initFirebase, 400); // SDK তখনও লোড না হয়ে থাকলে একটু পর আবার চেষ্টা
+    setTimeout(initFirebase, 400);
     return;
   }
   try{
     if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    // লগইন শুধু এই ব্রাউজার ট্যাবের জন্যই মনে রাখা হবে — ট্যাব/ব্রাউজার বন্ধ করলেই স্বয়ংক্রিয়ভাবে লগআউট হয়ে যাবে
     firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(e=>console.error('persistence set failed', e));
     fbDb = firebase.firestore();
     fbDocRef = fbDb.collection('app_data').doc('shared_state');
     fbReady = true;
-    // লগইন/লগআউট অবস্থা বদলালেই এখানে জানা যাবে — Firestore পড়া/লেখা এখন
-    // নিরাপত্তা-নিয়ম অনুযায়ী লগইন করা অবস্থাতেই কেবল সম্ভব
     let listening = false;
     firebase.auth().onAuthStateChanged((user)=>{
       AUTH_CHECKED = true;
@@ -582,7 +565,6 @@ function initFirebase(){
           if(role==='viewer' && ACTIVE_TAB==='entry') ACTIVE_TAB = 'history';
           if(!listening){ listening = true; listenFirebase(); }
         } else {
-          // পরিচিত নয় এমন কোনো ইমেইল দিয়ে সাইন-ইন হয়ে থাকলে (ভুলবশত অন্য অ্যাকাউন্ট) সাথে সাথে সাইন-আউট করে দেওয়া হচ্ছে
           AUTHENTICATED = false; CURRENT_ROLE = null;
           firebase.auth().signOut();
         }
@@ -603,10 +585,6 @@ function listenFirebase(){
     FIREBASE_STATUS = 'online';
     if(doc.exists && doc.data() && doc.data().json){
       const incoming = doc.data().json;
-      // এটা আমাদের নিজেরই এইমাত্র পাঠানো ডেটার প্রতিধ্বনি হলে (optimistic অথবা server-confirmed —
-      // Firestore দুটোর জন্যই আলাদা করে snapshot event পাঠায়) আবার প্রসেস/render করার দরকার নেই,
-      // কারণ আমাদের বর্তমান STATE-এ এর চেয়ে নতুন এডিট (যেমন অন্য কোনো সারির সিলেকশন) থাকতে পারে —
-      // পুরনো একটা ইকো দিয়ে সেটা ওভাররাইট হয়ে গেলেই "হাইলাইট হারিয়ে যাওয়া"-র মতো বাগ তৈরি হতো
       if(incoming === LAST_PUSHED_JSON) return;
       try{
         STATE = migrateState(JSON.parse(incoming));
@@ -614,8 +592,6 @@ function listenFirebase(){
         render();
       }catch(e){ console.error('snapshot parse failed', e); }
     } else {
-      // ক্লাউডে এখনো কিছু নেই — শুধু তখনই বর্তমান লোকাল ডেটা পাঠানো হবে যদি সত্যিই কিছু থাকে;
-      // একটা একদম খালি ব্রাউজার যেন ভুল করে খালি ডেটা পাঠিয়ে অন্য কারো আসল ডেটা মুছে না দেয়
       const hasRealData = STATE && STATE.entries && Object.keys(STATE.entries).length > 0;
       if(hasRealData) pushToFirebase();
     }
@@ -626,7 +602,7 @@ function listenFirebase(){
 }
 
 function scheduleFirebaseSync(){
-  if(!fbReady){ setTimeout(scheduleFirebaseSync, 400); return; } // Firebase তখনও প্রস্তুত না হলে একটু পর আবার চেষ্টা, যেন কোনো সংরক্ষণ হারিয়ে না যায়
+  if(!fbReady){ setTimeout(scheduleFirebaseSync, 400); return; }
   clearTimeout(fbSyncTimer);
   fbSyncTimer = setTimeout(pushToFirebase, 500);
 }
@@ -674,8 +650,6 @@ function holidayMap(){
   STATE.holidays.forEach(h=>{ if(h.date && !m[h.date]) m[h.date]=h.name; });
   return m;
 }
-// এই মাসের সব শুক্রবার/ছুটির দিনে মন্তব্য বসানো আছে কিনা — এটা প্রতিবার নতুন করে হিসাব করা হয়
-// (কোনো স্থায়ী ফ্ল্যাগ না রেখে), তাই কেউ পরে ছুটি যোগ/মন্তব্য মুছে দিলে এটা নিজে থেকেই ঠিক থাকে
 function remarksFullyFilled(ym){
   const entry = getMonthEntry(ym);
   const hMap = holidayMap();
@@ -688,7 +662,6 @@ function remarksFullyFilled(ym){
   return true;
 }
 
-/* ---------------- কেন্দ্র লুকআপ ---------------- */
 function centerLabel(r){
   return `${r.blockNo||''}${r.note?(' '+r.note):''} ${r.purpose||''}`.replace(/\s+/g,' ').trim();
 }
@@ -714,7 +687,6 @@ function lookupByCode(code){
   return {row, total};
 }
 
-/* ---------------- মাসের সারি তৈরি ---------------- */
 function buildMonthRows(ym, category){
   const [y,m] = ym.split('-').map(Number);
   const n = daysInMonth(y, m-1);
@@ -730,7 +702,6 @@ function getMonthEntry(ym){
   return STATE.entries[ym];
 }
 
-/* ================= লগইন ================= */
 let SHOW_FORGOT = false;
 function renderLogin(err){
   const app = document.getElementById('app');
@@ -814,7 +785,6 @@ async function doLogin(){
   if(btn){ btn.disabled = true; btn.textContent = 'যাচাই করা হচ্ছে…'; }
   try{
     await firebase.auth().signInWithEmailAndPassword(email, pass);
-    // সফল হলে onAuthStateChanged নিজে থেকেই AUTHENTICATED/CURRENT_ROLE সেট করে render() করবে
   }catch(e){
     console.error(e);
     renderLogin('ইউজারনেম বা পাসওয়ার্ড সঠিক নয়');
@@ -822,7 +792,6 @@ async function doLogin(){
 }
 function doLogout(){ firebase.auth().signOut(); }
 
-/* ================= রেন্ডার ফ্রেমওয়ার্ক ================= */
 function render(){
   if(!AUTHENTICATED){ renderLogin(); return; }
   const app = document.getElementById('app');
@@ -851,16 +820,12 @@ function render(){
   renderTab();
 }
 function isTabActive(id){
-  // ইতিহাস থেকে খোলা একটা রিপোর্ট দেখার সময় (ACTIVE_TAB==='entry' হলেও), "মাসিক রিপোর্ট" নয়,
-  // "ইতিহাস ও সার্চ" ট্যাবটাই হাইলাইট থাকবে — যাতে বোঝা যায় এটা ইতিহাস থেকে খোলা একটা রিপোর্ট
   if(ACTIVE_TAB==='entry' && VIEWING_FROM_HISTORY) return id==='history';
   return ACTIVE_TAB===id;
 }
 function tabBtn(id,label){ return `<button class="tab-btn ${isTabActive(id)?'active':''}" onclick="setTab('${id}')">${label}</button>`; }
 function setTab(id){
   ACTIVE_TAB=id;
-  // "মাসিক রিপোর্ট" ট্যাবে ফিরে এলে সবসময় সংরক্ষিত ডিফল্ট মাসেই (শেষ জমা দেওয়ার পরের মাস) রিসেট হবে —
-  // ইতিহাস থেকে অন্য কোনো মাস দেখা/এডিট করার প্রভাব যেন এখানে না থাকে
   if(id==='entry'){ CURRENT_MONTH = STATE.currentMonth || CURRENT_MONTH; VIEWING_FROM_HISTORY = false; }
   render();
 }
@@ -872,26 +837,12 @@ function renderTab(){
   else if(ACTIVE_TAB==='holidays') c.innerHTML = holidaysTabHTML();
   else if(ACTIVE_TAB==='dashboard') c.innerHTML = dashboardTabHTML();
   else c.innerHTML = historyTabHTML();
-  // রিপোর্ট টেবিল যেন যেকোনো স্ক্রিনে (কম্পিউটার/ল্যাপটপ/মোবাইল) horizontal scroll ছাড়াই
-  // সম্পূর্ণ দেখা যায় — রি-রেন্ডারের পর দুই ফ্রেম অপেক্ষা করে (লেআউট স্থির হওয়ার জন্য) মাপা হচ্ছে
   requestAnimationFrame(()=>requestAnimationFrame(fitReportTable));
 }
-/* ================= রিপোর্ট টেবিল স্ক্রিন-ফিট (Horizontal Scroll ছাড়াই) =================
-   .select-col/.remark-col/.village-col/.owner-col ইত্যাদি কলামের min-width-এর কারণে টেবিলের
-   স্বাভাবিক (natural) প্রস্থ কন্টেইনারের চেয়ে বেশি হয়ে গেলে, আগে শুধু পাশে স্ক্রল করে দেখা যেত।
-   এখন সেই "উপচে যাওয়া" প্রস্থ মেপে পুরো টেবিলটাকেই (তারিখ কলামসহ, কোনো কলাম না লুকিয়ে) ছোট করে
-   ঠিক কন্টেইনারের প্রস্থে বসিয়ে দেওয়া হয় — ফলে যেকোনো কম্পিউটার স্ক্রিনে পুরো রিপোর্ট এক নজরে,
-   কোনো scroll ছাড়াই দেখা যায়।
-   টীকা: প্রথমে এখানে CSS transform:scale() ব্যবহার করা হয়েছিল, কিন্তু ডেস্কটপে তাতে "নির্বাচন"
-   কলামের ড্রপডাউন (native <select>) ভুল জায়গায়/দেরিতে খুলছিল — কারণ transform থাকা কোনো
-   এলিমেন্টের ভেতরের <select>-এর ব্রাউজার-নিজস্ব পপআপ পজিশনিং ব্রাউজারে ঠিকমতো কাজ করে না।
-   তাই transform-এর বদলে CSS zoom ব্যবহার করা হচ্ছে — এটা আসল লেআউট রিফ্লো করে (শুধু পেইন্ট-লেভেল
-   ভিজ্যুয়াল স্কেল নয়), তাই <select> ড্রপডাউন এবং ইনপুট ফোকাস/কার্সার — দুটোই স্বাভাবিকভাবে কাজ করে। */
 function fitReportTable(){
   const wrap = document.getElementById('reportTableWrap');
   const table = document.getElementById('reportTableScale');
   if(!wrap || !table) return;
-  // আগে zoom রিসেট করে টেবিলের প্রকৃত (unzoomed) প্রস্থ মাপা হচ্ছে
   table.style.zoom = '1';
   const naturalWidth = table.scrollWidth;
   const availWidth = wrap.clientWidth;
@@ -907,13 +858,10 @@ window.addEventListener('resize', function(){
   clearTimeout(_fitReportResizeTimer);
   _fitReportResizeTimer = setTimeout(fitReportTable, 120);
 });
-// প্রথমবার পেজ খোলার পর বাংলা ওয়েবফন্ট লোড হওয়ার সাথে সাথে টেবিলের প্রকৃত প্রস্থ সামান্য বদলাতে
-// পারে (ফন্ট-মেট্রিক্সের পার্থক্যের কারণে) — তাই ফন্ট সম্পূর্ণ লোড হওয়ার পরও একবার রিমাপ করা হচ্ছে
 if(window.document && document.fonts && document.fonts.ready){
   document.fonts.ready.then(()=>fitReportTable()).catch(()=>{});
 }
 
-/* ================= এন্ট্রি ট্যাব ================= */
 function entryTabHTML(){
   const entry = getMonthEntry(CURRENT_MONTH);
   const [y,m] = CURRENT_MONTH.split('-').map(Number);
@@ -933,8 +881,6 @@ function entryTabHTML(){
     const info = lookupByCode(row.code);
     const offRow = isFriday || row.code==='----' || holiday;
     const isActive = entry.activeIdx===idx;
-    // এই সারির জন্য ড্রপডাউন/পিকারের অপশন তালিকা getRowOptionsFor()-এ কেন্দ্রীভূত করা হয়েছে
-    // (নিচের openCodePicker()-ও একই ফাংশন ব্যবহার করে, তাই দুই জায়গায় লজিক আলাদা হয়ে যাওয়ার সুযোগ নেই)
     return `
     <tr class="${offRow?'off-day':''} ${isActive?'active-row':''}">
       <td>${bnNum(d.getDate())}-${bnNum(m)}-${bnNum(y)}</td>
@@ -1035,22 +981,22 @@ function entryTabHTML(){
     <div class="table-wrap" id="reportTableWrap" style="overflow-x:auto;">
     <table id="reportTableScale" class="report-table-scale">
       <colgroup>
-        <col style="width:8.5%">  <!-- তারিখ -->
-        <col style="width:6.5%">  <!-- বার -->
-        <col class="mobile-hide" style="width:4.5%">  <!-- মৌজা নং -->
-        <col class="mobile-hide" style="width:7.5%">  <!-- মৌজা নাম -->
-        <col class="mobile-hide" style="width:6.5%">  <!-- ইউনিয়ন -->
-        <col class="mobile-hide" style="width:5%">    <!-- ওয়ার্ড নং -->
-        <col class="mobile-hide" style="width:8%">    <!-- গ্রামের নাম -->
-        <col class="mobile-hide" style="width:8%">    <!-- হইতে-পর্যন্ত -->
-        <col class="mobile-hide" style="width:4%">    <!-- নতুন -->
-        <col class="mobile-hide" style="width:4%">    <!-- বিলুপ্ত -->
-        <col class="mobile-hide" style="width:4%">    <!-- মোট -->
-        <col style="width:5%">  <!-- ব্লক নং -->
-        <col style="width:12%"> <!-- টিকাদান কেন্দ্রের মালিকের নাম -->
-        <col style="width:4.5%">  <!-- ভ্রমণের উদ্দেশ্য -->
-        <col style="width:12%">   <!-- মন্তব্য -->
-        <col class="no-print" style="width:30%"> <!-- নির্বাচন — প্রিন্টে সম্পূর্ণ বাদ যায়, স্ক্রিনে বড় রাখা হয়েছে যাতে ড্রপডাউনের পুরো লেখা পড়া যায় -->
+        <col style="width:8.5%">
+        <col style="width:6.5%">
+        <col class="mobile-hide" style="width:4.5%">
+        <col class="mobile-hide" style="width:7.5%">
+        <col class="mobile-hide" style="width:6.5%">
+        <col class="mobile-hide" style="width:5%">
+        <col class="mobile-hide" style="width:8%">
+        <col class="mobile-hide" style="width:8%">
+        <col class="mobile-hide" style="width:4%">
+        <col class="mobile-hide" style="width:4%">
+        <col class="mobile-hide" style="width:4%">
+        <col style="width:5%">
+        <col style="width:12%">
+        <col style="width:4.5%">
+        <col style="width:12%">
+        <col class="no-print" style="width:30%">
       </colgroup>
       <thead>
         <tr>
@@ -1082,17 +1028,11 @@ function entryTabHTML(){
 }
 function changeMonth(v){ CURRENT_MONTH = v; renderTab(); }
 function changeCategory(v){ getMonthEntry(CURRENT_MONTH).category = v; saveState(); renderTab(); }
-/* ================= "নির্বাচন" কলামের কাস্টম পপ-আপ পিকার =================
-   native <select>-এর বদলে এই পিকারটা স্ক্রিনের ঠিক মাঝখানে (position:fixed, টেবিলের zoom/স্ক্রল
-   অবস্থা যাই থাকুক না কেন) খোলে, তাই ডেস্কটপে ভুল জায়গায় খুলে ভুল অপশনে ক্লিক পড়ে যাওয়ার সমস্যা
-   থাকে না। সঙ্গে একটা সার্চ বক্সও আছে — অনেকগুলো কেন্দ্র থাকলে দ্রুত খুঁজে বের করা যায়। */
 function getRowOptionsFor(entry, row){
   const opts = optionsForCategory(entry.category);
-  // এই সারির আগে বাছাই করা মান যদি বর্তমান "Fill Type" ফিল্টারের লিস্টে না থাকে,
-  // তাহলেও সেটাকে লিস্টে যোগ করে রাখা হয় — যাতে Fill Type বদলালে আগের সিলেকশন হারিয়ে না যায়/না লুকায়
   return (row.code && !opts.includes(row.code)) ? [row.code, ...opts] : opts;
 }
-let CODE_PICKER_STATE = null; // {idx, opts}
+let CODE_PICKER_STATE = null;
 let CODE_PICKER_OPENED_AT = 0;
 function openCodePicker(idx){
   const entry = getMonthEntry(CURRENT_MONTH);
@@ -1107,13 +1047,8 @@ function closeCodePicker(){
   const root = document.getElementById('codePickerRoot');
   if(root) root.innerHTML = '';
 }
-// ব্যাকড্রপে (মডালের বাইরে) ক্লিক করলে বন্ধ হয়ে যায় — কিন্তু ডেস্কটপে zoom-স্কেল করা টেবিলের ভেতরের
-// বাটনে ক্লিক করলে কিছু ব্রাউজারে একটা "ইকো/ডুপ্লিকেট" ক্লিক ইভেন্ট তৈরি হয়, যেটা তখনই পুরো স্ক্রিনজুড়ে
-// থাকা ব্যাকড্রপে গিয়ে পড়ে এবং পপ-আপ খোলার সাথে সাথেই বন্ধ করে দেয় (২-৩ বার ট্রাই করার পর ঠিকভাবে
-// খোলে থাকার অভিযোগ এখান থেকেই আসছিল)। তাই খোলার প্রথম মুহূর্তে (৩৫০ মিলিসেকেন্ড) ব্যাকড্রপ-ক্লিক
-// উপেক্ষা করা হচ্ছে — এরপর স্বাভাবিকভাবে বাইরে ক্লিক করলে ঠিকই বন্ধ হয়ে যাবে।
 function handlePickerOverlayClick(e){
-  if(e.target !== e.currentTarget) return; // শুধু ব্যাকড্রপে ক্লিক হলেই, মডালের ভেতরের কিছুতে না
+  if(e.target !== e.currentTarget) return;
   if(Date.now() - CODE_PICKER_OPENED_AT < 350) return;
   closeCodePicker();
 }
@@ -1143,7 +1078,7 @@ function renderCodePickerModal(){
 }
 function renderPickerOptionsHTML(currentCode, opts, search){
   const term = (search||'').trim().toLowerCase();
-  const list = ['', ...opts]; // '' মানে "--নির্বাচন--" (খালি করে দেওয়া)
+  const list = ['', ...opts];
   const filtered = term ? list.filter(o => (o===''?'--নির্বাচন--':o).toLowerCase().includes(term)) : list;
   if(filtered.length===0) return `<div class="picker-empty">কোনো ফলাফল নেই</div>`;
   return filtered.map(o=>{
@@ -1167,12 +1102,10 @@ function handlePickerOptionClick(e){
   closeCodePicker();
   if(idx!=null) handleCodeChange(idx, value);
 }
-// জমা দেওয়া (submitted) রিপোর্টের ক্ষেত্রে "নির্বাচন" ড্রপডাউন বদলানোর আগে সতর্ক করা হয়,
-// যাতে ভুলবশত ট্যাপ করে আগে থেকে জমা দেওয়া ডেটা বদলে না যায়
 function handleCodeChange(idx, val){
   if(STATE.submitted[CURRENT_MONTH]){
     const proceed = confirm('এই রিপোর্টটি ইতিমধ্যে জমা দেওয়া হয়েছে। আপনি কি এই নির্বাচন পরিবর্তন করতে চান?');
-    if(!proceed){ renderTabPreservingFocus(); return; } // বাতিল করলে দৃশ্যমান পরিবর্তনও আগের অবস্থায় ফিরে যাবে
+    if(!proceed){ renderTabPreservingFocus(); return; }
   }
   updateRow(idx, 'code', val);
 }
@@ -1180,9 +1113,6 @@ async function updateRow(idx, field, val){
   const entry = getMonthEntry(CURRENT_MONTH);
   entry.rows[idx][field] = val;
   entry.activeIdx = idx;
-  // "await saveState()" চলাকালীন ব্রাউজার (বিশেষত মোবাইলে) নিজে থেকেই ফোকাস সরিয়ে ফেলতে পারে,
-  // তাই async কাজ শুরুর আগেই কোন এলিমেন্টে ফোকাস ছিল সেটা মনে রেখে দেওয়া হচ্ছে — পরে renderTab-এর
-  // পর document.activeElement আবার চেক করলে ততক্ষণে সেটা হারিয়ে/বদলে যেতে পারে
   const el0 = document.activeElement;
   const activeId = (el0 && el0.id) ? el0.id : null;
   SAVING_IN_PROGRESS = true;
@@ -1219,9 +1149,6 @@ function clearMonth(){
 }
 let SAVING_IN_PROGRESS = false;
 
-/* ================= প্রতিটি ঘরের লেখা মেপে প্রয়োজনমতো ফন্ট ছোট করা (এক্সেলের "Shrink to fit") =================
-   এই পুরো হিসাবটা স্ক্রিনের বাইরে (অদৃশ্য) একটা কপির উপর করা হয়, তাই আসল পাতায় কোনো
-   পরিবর্তন/ফ্লিকার দেখা যায় না — শুধু প্রিন্ট/PDF আউটপুটেই এর প্রভাব পড়ে। */
 function buildOffscreenClone(){
   const sheet = document.getElementById('reportSheet');
   if(!sheet) return null;
@@ -1229,9 +1156,6 @@ function buildOffscreenClone(){
   clone.removeAttribute('id');
   clone.style.width = '198mm';
   clone.style.maxWidth = '198mm';
-  // স্ক্রিনে দেখানোর জন্য টেবিলে যে screen-fit zoom বসানো থাকতে পারে (fitReportTable),
-  // সেটা প্রিন্ট/PDF ক্লোনে থেকে গেলে autofitCells/stretchRowsToFillPage-এর মাপজোখ ভুল হয়ে যাবে —
-  // তাই ক্লোনের ভেতরে সবসময় পূর্ণ আকারে (zoom:1) রিসেট করা হচ্ছে
   const cloneTable = clone.querySelector('#reportTableScale, .report-table-scale');
   if(cloneTable){ cloneTable.style.zoom = '1'; cloneTable.removeAttribute('id'); }
   const cloneWrap = clone.querySelector('.table-wrap');
@@ -1244,8 +1168,6 @@ function buildOffscreenClone(){
   return { wrap, clone };
 }
 function autofitCells(root){
-  // ধাপ ১: কলাম ১-১৪ এর সব ঘরের জন্য একটামাত্র অভিন্ন ফন্ট সাইজ বের করা (রো-ভিত্তিতে আলাদা নয়) —
-  // এতে প্রতিটি সাধারণ সারির উচ্চতা সমান থাকে, কোনো সারি বাকিগুলোর চেয়ে চিকন/মোটা দেখায় না
   const rows = Array.from(root.querySelectorAll('table tbody tr'));
   const mainCellsByRow = rows.map(row=>Array.from(row.querySelectorAll('td:not(.select-col)')).slice(0,14));
   const allMainCells = mainCellsByRow.flat();
@@ -1258,14 +1180,9 @@ function autofitCells(root){
     allMainCells.forEach(td=>{ td.style.fontSize = size+'px'; });
     guard++;
   }
-  // নিরাপত্তা: সর্বনিম্ন ফন্ট সাইজেও যদি কোনো ঘরের লেখা এখনও না আঁটে (যেমন লম্বা মালিকের নাম),
-  // সেটিকে জোর করে এক লাইনে না রেখে দুই লাইনে wrap করতে দেওয়া হচ্ছে — নাহলে পাশের কলামের উপর
-  // লেখা উপচে পড়ে (ওভারল্যাপ) দেখায়
   allMainCells.forEach(td=>{
     if(td.scrollWidth > td.clientWidth){ td.style.whiteSpace='normal'; }
   });
-  // ধাপ ২: মন্তব্য কলাম — একই অভিন্ন সাইজ দিয়ে চেষ্টা; শুধু যে নির্দিষ্ট সারিতে না আঁটবে,
-  // কেবল সেই একটা ঘরই আলাদাভাবে আরেকটু ছোট হবে বা প্রয়োজনে দুই লাইনে যাবে
   const results = [];
   rows.forEach((row,ri)=>{
     const cells = Array.from(row.querySelectorAll('td:not(.select-col)'));
@@ -1302,8 +1219,6 @@ function applyFitResultsToLiveSheet(results){
     cells.forEach((td, i)=>{
       const r = rr[i];
       if(!r) return;
-      // কাস্টম প্রপার্টি হিসেবে বসানো হচ্ছে — স্ক্রিনের সাধারণ CSS এগুলো ব্যবহারই করে না,
-      // শুধু @media print নিয়মেই এগুলো পড়া হয়, তাই স্ক্রিনে কোনো প্রভাব পড়ে না
       td.style.setProperty('--fit-size', r.size + 'px');
       td.style.setProperty('--fit-wrap', r.wrapMode);
     });
@@ -1317,14 +1232,12 @@ function clearFitResultsFromLiveSheet(){
     td.style.removeProperty('--fit-wrap');
   });
 }
-/* পাতার নিচে ফাঁকা জায়গা না রেখে সব সারিকে সমান করে ছড়িয়ে পুরো পাতা ভরে দেওয়া হয় */
 function stretchRowsToFillPage(root){
   const table = root.querySelector('table');
   const tbody = root.querySelector('table tbody');
   const thead = root.querySelector('table thead');
   if(!table || !tbody) return [];
 
-  // ব্রাউজারের mm→px রূপান্তর যাচাই করতে একটা অস্থায়ী ক্যালিব্রেশন এলিমেন্ট ব্যবহার হচ্ছে
   const calib = document.createElement('div');
   calib.style.cssText = 'position:fixed;visibility:hidden;height:285mm;width:0;';
   document.body.appendChild(calib);
@@ -1333,7 +1246,7 @@ function stretchRowsToFillPage(root){
 
   const rootRect = root.getBoundingClientRect();
   const tableRect = table.getBoundingClientRect();
-  const nonTableHeight = rootRect.height - tableRect.height; // হেডার+কর্মীর তথ্য+নোট+স্বাক্ষর অংশ
+  const nonTableHeight = rootRect.height - tableRect.height;
   const theadHeight = thead ? thead.getBoundingClientRect().height : 0;
 
   const bodyRows = Array.from(tbody.querySelectorAll('tr'));
@@ -1369,11 +1282,6 @@ function clearRowHeightsFromLiveSheet(){
   sheet.querySelectorAll('table tbody tr').forEach(tr=>tr.style.removeProperty('--row-h'));
 }
 
-/* ================= প্রিন্ট (ফাইলের নামসহ) ================= */
-/* মোবাইলে (বিশেষত প্রথমবার পেজ খোলার পরপরই) বাংলা ওয়েবফন্ট (Noto Sans/Serif Bengali) ডাউনলোড হয়ে
-   পুরোপুরি লোড হওয়ার আগেই প্রিন্ট/PDF স্ন্যাপশট নেওয়া হয়ে যেত — তখন ব্রাউজার সিস্টেমের ডিফল্ট ফন্টে
-   ফিরে যায়, যেটাতে বাংলা যুক্তাক্ষর ঠিকভাবে জোড়া লাগে না, ফলে লেখা ভাঙা/ফাঁকা-ফাঁকা দেখায়। তাই প্রিন্টের
-   আগে ফন্ট সম্পূর্ণ লোড হওয়া পর্যন্ত অপেক্ষা করা হচ্ছে। */
 async function ensureFontsLoaded(){
   if(!(window.document && document.fonts && document.fonts.load)) return;
   try{
@@ -1385,7 +1293,7 @@ async function ensureFontsLoaded(){
       document.fonts.load('700 12px "Noto Sans Bengali"'),
       document.fonts.ready
     ]);
-  }catch(e){ /* ফন্ট লোড ব্যর্থ হলেও প্রিন্ট আটকাবে না */ }
+  }catch(e){ }
 }
 async function printReport(){
   const prevTitle = document.title;
@@ -1410,14 +1318,6 @@ async function printReport(){
     window.removeEventListener('afterprint', restore);
     document.removeEventListener('visibilitychange', onVisChange);
   };
-  // মোবাইলে window.print() একটা সিস্টেম-লেভেল প্রিন্ট/PDF শিট খোলে যেটা অ্যাপকে ব্যাকগ্রাউন্ডে
-  // পাঠিয়ে দেয় (visibilitychange -> 'hidden')। ব্যবহারকারী Save as PDF-এর সেটিংস (Copies, Paper
-  // size ইত্যাদি) নিয়ে সময় নিলে এটা কয়েক সেকেন্ডের বেশি সময় নিতে পারে। সেই সময়টায় টাইটেল/ফিট যেন
-  // আগেভাগেই পুরনো অবস্থায় ফিরে না যায়, তাই এখন restore() শুধু ঘটবে যখন: (ক) 'afterprint' ইভেন্ট
-  // আসবে (ডেস্কটপে সাধারণত এটাই আসে ঠিক সময়ে), অথবা (খ) ব্যবহারকারী আবার অ্যাপে ফিরে আসবে
-  // (visibilitychange -> 'visible', মোবাইলে এটাই আসল সংকেত — Save/Cancel যাই করুন না কেন)।
-  // নিরাপত্তার জন্য একটা অনেক লম্বা (২ মিনিট) ফলব্যাক টাইমআউটও রাখা হয়েছে, যাতে কোনো কারণে
-  // দুটো ইভেন্টের একটাও না এলে টাইটেল চিরস্থায়ীভাবে বদলে না থেকে যায়।
   const onVisChange = ()=>{
     if(document.visibilityState === 'visible') restore();
   };
@@ -1427,15 +1327,6 @@ async function printReport(){
   window.print();
 }
 
-/* ================= PDF ডাউনলোড (ছবি-ভিত্তিক পদ্ধতি — মোবাইল Chrome-এর বাংলা টেক্সট-বাগ এড়াতে) =================
-   সমস্যা: মোবাইল Chrome-এর নিজস্ব "Save as PDF" ইঞ্জিনটির জটিল বাংলা যুক্তাক্ষর/মাত্রা (conjunct)
-   PDF-এর টেক্সট-লেয়ারে রূপান্তরের একটা পরিচিত বাগ আছে — প্রতিটি অক্ষর-গুচ্ছ আলাদা আলাদা "শব্দ"
-   হিসেবে বসে যায়, ফলে লেখা ভাঙা/ফাঁকা-ফাঁকা দেখায় (ডেস্কটপ Chrome-এ এই বাগ নেই)। এটা CSS/HTML
-   দিয়ে ঠিক করা সম্ভব না — এটা ব্রাউজার ইঞ্জিনের নিজস্ব সীমাবদ্ধতা।
-   সমাধান: স্ক্রিনে যেভাবে বাংলা একদম সঠিকভাবে রেন্ডার হয় (এখানে কোনো বাগ নেই), সেই একই রেন্ডারিং-এর
-   একটা উচ্চ-রেজলিউশন "ছবি" (html2canvas দিয়ে) তুলে সরাসরি PDF-এ বসিয়ে দেওয়া হয় (jsPDF দিয়ে)।
-   এতে ব্রাউজারের বাগি PDF-টেক্সট-ইঞ্জিন আর ব্যবহার হয় না বলে লেখা ভাঙার কোনো সুযোগই থাকে না,
-   এবং ফাইলের নামও এখানেই সরাসরি নির্ধারণ করা যায় (কোনো টাইমিং সমস্যা ছাড়াই)। */
 async function downloadPDFViaImage(){
   if(!document.getElementById('reportSheet')) return;
   if(!(window.html2canvas && window.jspdf)){
@@ -1447,8 +1338,6 @@ async function downloadPDFViaImage(){
   const off = buildOffscreenClone();
   if(!off) return;
   await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-  // এই দুটো ফাংশন ক্লোনের নিজস্ব cell/row-এ সরাসরি ফন্ট-সাইজ ও উচ্চতা বসিয়ে দেয়,
-  // তাই স্ক্রিনশট তোলার আগে ক্লোনটা ইতিমধ্যেই এক-পাতার সঠিক লেআউটে চলে আসে
   autofitCells(off.clone);
   stretchRowsToFillPage(off.clone);
   await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
@@ -1481,7 +1370,7 @@ async function submitMonth(){
     if(!proceed) return;
   }
   STATE.submitted[CURRENT_MONTH] = new Date().toISOString();
-  delete getMonthEntry(CURRENT_MONTH).activeIdx; // জমা দেওয়ার সাথে সাথে সবুজ হাইলাইট মুছে যাবে
+  delete getMonthEntry(CURRENT_MONTH).activeIdx;
   SAVING_IN_PROGRESS = true;
   toast('সংরক্ষণ করা হচ্ছে... একটু অপেক্ষা করুন');
   let ok = false;
@@ -1514,7 +1403,6 @@ async function unsubmitMonth(){
   renderTab();
 }
 
-/* ================= কর্মী ও কেন্দ্র তালিকা ট্যাব ================= */
 function setupTabHTML(){
   const w = STATE.worker;
   const rows = STATE.centerRows.map((r,i)=>{
@@ -1585,10 +1473,6 @@ function setupTabHTML(){
   </div>`;
 }
 function updateWorker(field,val){ STATE.worker[field]=val; saveState(); }
-/* ================= স্বাক্ষর আপলোড =================
-   ছবিটা ছোট করে (সর্বোচ্চ ৫০০px চওড়া) ও কমপ্রেস করে (JPEG) সংরক্ষণ করা হয়, যাতে Firestore-এ
-   জায়গা কম লাগে এবং সব ডিভাইসে দ্রুত সিঙ্ক হয়। সাদা ব্যাকগ্রাউন্ড আগে থেকেই বসিয়ে দেওয়া হয়, তাই
-   স্বচ্ছ (transparent) পিএনজি ছবি আপলোড করলেও কালো না হয়ে সাদা ব্যাকগ্রাউন্ডে সঠিকভাবে বসবে। */
 function resizeImageToDataUrl(file, maxWidth, quality){
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
@@ -1646,9 +1530,6 @@ function adminLoginSettingsHTML(){
     </div>
   </div>`;
 }
-// টাইপ করার সময় renderTab() পুরো টেবিল নতুন করে বানিয়ে ফেলে, যার ফলে ইনপুট বক্সটাও নতুন হয়ে
-// গিয়ে কীবোর্ড ফোকাস হারিয়ে যায় (প্রতি অক্ষরের পর "বেরিয়ে যাওয়ার" মতো লাগে)। তাই রি-রেন্ডারের
-// আগে কোন ইনপুটে ফোকাস ছিল ও কার্সার কোথায় ছিল তা মনে রেখে, রি-রেন্ডারের পর সেটা ফিরিয়ে দেওয়া হয়।
 function renderTabPreservingFocus(){
   const active = document.activeElement;
   let saved = null;
@@ -1661,7 +1542,7 @@ function renderTabPreservingFocus(){
     if(el){
       el.focus();
       if(typeof el.setSelectionRange==='function' && saved.start!=null){
-        try{ el.setSelectionRange(saved.start, saved.end); }catch(e){ /* কিছু ইনপুট টাইপ (যেমন number/date) এটা সমর্থন করে না */ }
+        try{ el.setSelectionRange(saved.start, saved.end); }catch(e){ }
       }
     }
   }
@@ -1684,7 +1565,6 @@ function deleteCenter(id){
   saveState(); renderTab();
 }
 
-/* ================= ছুটির তালিকা ট্যাব ================= */
 function holidaysTabHTML(){
   const sorted = [...STATE.holidays].sort((a,b)=> (a.date||'').localeCompare(b.date||''));
   const rows = sorted.map(h=>`
@@ -1727,7 +1607,6 @@ function deleteHoliday(id){
   saveState(); renderTab();
 }
 
-/* ================= ইতিহাস ট্যাব ================= */
 function allRowsFlat(){
   const out = [];
   Object.keys(STATE.entries).forEach(ym=>{
@@ -1739,8 +1618,6 @@ function allRowsFlat(){
   });
   return out;
 }
-// ইতিহাস ট্যাবে "X দিন পূরণ করা হয়েছে" যেভাবে গোনে (কোনো কোড বসানো থাকলেই — সি সি সেবা সহ),
-// ঠিক সেই একই হিসাবে সব মাস মিলিয়ে "সর্বমোট কর্মসূচি" ও IPC/EPI আলাদা করে গোনার জন্য
 function allProgramDaysFlat(){
   const out = [];
   Object.keys(STATE.entries).forEach(ym=>{
@@ -1754,8 +1631,6 @@ function allProgramDaysFlat(){
   return out;
 }
 
-/* ================= ড্যাশবোর্ড — চার্ট তৈরির হেল্পার ================= */
-// প্রতিটা মাসের জন্য মোট কর্মসূচি সংখ্যা এবং IPC/EPI ভাঙন হিসাব করে, তারিখ অনুযায়ী সাজিয়ে দেয়
 function monthlyProgramStats(){
   const map = {};
   allProgramDaysFlat().forEach(r=>{
@@ -1771,7 +1646,6 @@ function monthlyProgramStats(){
       count: map[ym].count, ipc: map[ym].ipc, epi: map[ym].epi };
   });
 }
-// প্রতিটা মাসের জন্য মোট পরিদর্শিত বাড়ি এবং IPC/EPI-এর আওতায় ভাঙন হিসাব করে
 function monthlyHouseStats(){
   const map = {};
   allRowsFlat_withPurpose().forEach(r=>{
@@ -1798,7 +1672,6 @@ function allRowsFlat_withPurpose(){
   });
   return out;
 }
-// একাধিক সিরিজ (যেমন সর্বমোট/IPC/EPI) পাশাপাশি বার আকারে দেখানোর জন্য — একটা লেজেন্ডসহ
 function renderGroupedBarChart(data, series){
   if(!data.length) return '<div class="empty">কোনো ডেটা নেই — মাসিক রিপোর্টে কর্মসূচি বসালে এখানে চার্ট দেখা যাবে</div>';
   const w=700,h=320,padL=38,padB=66,padT=26,padR=16;
@@ -2048,11 +1921,6 @@ function handleImportFile(input){
   input.value = '';
 }
 
-/* ইতিহাস সার্চ — এখন তিনভাবেই খোঁজা যায়: বাংলা মাসের নাম+বছর ("অক্টোবর ২০২৬"),
-   মাস-বছর সংখ্যায় হাইফেন দিয়ে ("10-2026"), বা টানা সংখ্যায় ("102026") */
-// প্রতিটা অক্ষর টাইপ করার পর renderTab() পুরো ট্যাব-কনটেন্ট (সার্চ বক্সসহ) নতুন করে তৈরি করে,
-// যার ফলে স্বাভাবিকভাবেই কীবোর্ড ফোকাস হারিয়ে যায় (প্রথম অক্ষরের পরই "বেরিয়ে" যাওয়ার মতো লাগে)।
-// তাই রি-রেন্ডারের পর সার্চ বক্সে আবার ফোকাস ও কার্সারের অবস্থান ফিরিয়ে দেওয়া হচ্ছে।
 function handleHistorySearch(v){
   window._searchTerm = v;
   renderTab();
@@ -2067,11 +1935,9 @@ function monthMatchesSearch(ym, rawTerm){
   if(!term) return true;
   const [y,m] = ym.split('-').map(Number);
   const yyyy = String(y), mm = String(m).padStart(2,'0');
-  // বাংলা মাসের নাম দিয়ে সরাসরি মিলানো (বাংলা বা ইংরেজি সংখ্যা — দুই রকম বছর লেখাতেই)
   const bnLabel = BN_MONTHS[m-1] + ' ' + bnNum(y);
   const enDigitLabel = BN_MONTHS[m-1] + ' ' + yyyy;
   if(bnLabel.includes(term) || enDigitLabel.includes(term)) return true;
-  // বাংলা সংখ্যা টাইপ করে থাকলে সেটাকে ইংরেজি সংখ্যায় রূপান্তর
   const normTerm = term.replace(/[০-৯]/g, d=>'০১২৩৪৫৬৭৮৯'.indexOf(d));
   if(/^[0-9\-\s]+$/.test(normTerm)){
     const digits = normTerm.replace(/[^0-9]/g,'');
@@ -2138,9 +2004,6 @@ function openMonth(ym){
   VIEWING_FROM_HISTORY = true;
   render();
 }
-/* ইতিহাস থেকে কোনো মাস মুছে ফেলার পর, "পরবর্তীতে কোন মাস ডিফল্ট থাকবে" — সেটা এখন সবসময়
-   ইতিহাসে বাকি থাকা সর্বশেষ জমা দেওয়া মাসের উপর ভিত্তি করে নতুন করে ঠিক করা হয় (সেই মাসের পরের মাস)।
-   কোনো জমা দেওয়া মাসই না থাকলে আজকের প্রকৃত ক্যালেন্ডার মাসে ফিরে যায়। */
 function recalcDefaultMonthFromHistory(){
   const submittedMonths = Object.keys(STATE.submitted).sort();
   STATE.currentMonth = submittedMonths.length
@@ -2159,22 +2022,18 @@ async function deleteMonthReport(ym){
   toast(ok ? `${label} মাসের রিপোর্ট মুছে ফেলা হয়েছে` : '⚠ মুছতে সমস্যা হয়েছে, আবার চেষ্টা করুন');
 }
 
-/* পেইজের যেকোনো খালি জায়গায় (টেবিলের সারির বাইরে) ক্লিক করলে
-   "সর্বশেষ এডিট করা সারি"-র সবুজ হাইলাইটটি মুছে যাবে।
-   এটি শুধু স্ক্রিনে দেখানো ভিজ্যুয়াল ক্লিয়ার — ডেটা/স্টেট অপরিবর্তিত থাকে,
-   তাই পরবর্তী রি-রেন্ডারে (যেমন অন্য সারি এডিট করলে বা Firebase সিঙ্ক হলে) দরকার হলে আবার দেখাবে। */
 document.addEventListener('click', function(e){
-  if(e.target.closest('tbody tr')) return; // টেবিলের ভেতরের ক্লিক হলে কিছু করার দরকার নেই
+  if(e.target.closest('tbody tr')) return;
   document.querySelectorAll('tbody tr.active-row').forEach(tr=>tr.classList.remove('active-row'));
 }, true);
 
-/* ---------------- init ---------------- */
 (async function init(){
   STATE = await loadState();
   CURRENT_MONTH = STATE.currentMonth || isoDate(new Date()).slice(0,7);
   render();
   initFirebase();
 })();
+
 </script>
 </body>
 </html>
