@@ -1328,37 +1328,6 @@ async function printReport(){
   window.print();
 }
 
-/* ================= WhatsApp-এ স্বয়ংক্রিয়ভাবে PDF শেয়ার (শুধু Mobile "PDF ডাউনলোড করুন" বাটনের জন্য) =================
-   এই নম্বরটাই সেই নির্দিষ্ট WhatsApp নম্বর যেখানে রিপোর্ট পাঠাতে হবে। ⚠ ব্রাউজারের Web Share API
-   কোনো নির্দিষ্ট Contact/Number আগে থেকে বেছে দিতে পারে না (এটা ব্রাউজার/OS-এর নিরাপত্তা সীমাবদ্ধতা,
-   কোনো ব্যক্তিগত WhatsApp নম্বরে ফাইল সম্পূর্ণ silent/zero-tap পাঠানোর কোনো Public API নেই) — তাই
-   এই নম্বরটা শুধু Share sheet-এর সাথে যাওয়া বার্তায় মনে করিয়ে দেওয়ার জন্য ব্যবহার হয়; ব্যবহারকারীকে
-   শেয়ার-তালিকায় WhatsApp বেছে, তারপর এই নম্বর/কন্টাক্ট নিজে সিলেক্ট করে "Send" চাপতে হবে। */
-const WHATSAPP_TARGET_NUMBER = '+8801821299993';
-
-/* pdf.save() (নিচে অপরিবর্তিত রাখা হয়েছে) দিয়ে যে একই PDF ইতিমধ্যে ডাউনলোড হয়ে গেছে, ঠিক সেই
-   একই Blob দিয়ে (কোনো নতুন Template/আলাদা Generation ছাড়াই) ফোনের নেটিভ Share Sheet খোলার চেষ্টা
-   করা হয় — সমর্থিত ব্রাউজারে (Android Chrome/Edge, আধুনিক iOS Safari) WhatsApp আইকন সেই তালিকায়
-   PDF-সহ থাকবে। অসমর্থিত ব্রাউজারে (ডেস্কটপ, পুরনো ব্রাউজার) কিছুই ঘটে না — আগের মতোই শুধু ডাউনলোড
-   হয়ে যায়, কোনো error দেখানো হয় না। */
-async function tryShareGeneratedPDF(pdf, fileName){
-  try{
-    if(!(navigator.share && navigator.canShare)) return;
-    const blob = pdf.output('blob');
-    const file = new File([blob], fileName, {type:'application/pdf'});
-    if(!navigator.canShare({files:[file]})) return;
-    await navigator.share({
-      files:[file],
-      title: fileName,
-      text: `মাসিক রিপোর্ট — অনুগ্রহ করে WhatsApp-এ ${WHATSAPP_TARGET_NUMBER} নম্বরে পাঠান`
-    });
-    toast('📤 শেয়ার তালিকা খোলা হয়েছে — সেখান থেকে WhatsApp বেছে নিয়ে পাঠিয়ে দিন', 4500);
-  }catch(e){
-    // ব্যবহারকারী শেয়ার বাতিল করলে (AbortError) — কোনো সমস্যা নেই, PDF তো আগেই ডাউনলোড হয়ে গেছে
-    if(e && e.name !== 'AbortError'){ console.error('whatsapp share failed', e); }
-  }
-}
-
 async function downloadPDFViaImage(){
   if(!document.getElementById('reportSheet')) return;
   if(!(window.html2canvas && window.jspdf)){
@@ -1381,11 +1350,8 @@ async function downloadPDFViaImage(){
     const imgW = pageWidth;
     const imgH = canvas.height * imgW / canvas.width;
     pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgW, Math.min(imgH, pageHeight));
-    const fileName = reportFileBaseName(CURRENT_MONTH) + '.pdf';
-    pdf.save(fileName);
+    pdf.save(reportFileBaseName(CURRENT_MONTH) + '.pdf');
     toast('✅ PDF ডাউনলোড হয়েছে — এখন হোয়াটসঅ্যাপ খুলে ফাইলটি Attach করে পাঠাতে পারেন', 5000);
-    // উপরের ডাউনলোড অপরিবর্তিত রেখে, একই PDF দিয়ে সমর্থিত ফোনে WhatsApp শেয়ার সীট খোলার চেষ্টা
-    await tryShareGeneratedPDF(pdf, fileName);
   }catch(e){
     console.error('pdf export failed', e);
     toast('⚠ PDF তৈরি করতে সমস্যা হয়েছে, আবার চেষ্টা করুন', 4500);
