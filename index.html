@@ -17,29 +17,64 @@
     --ink:#1b2430;
     --paper:#f3f6fb;
     --paper-line:#d8e0ec;
-    /* ================= পুরো থিম এখন নতুন Brand Palette দিয়ে চালিত =================
-       --green-deep/--green-mid/--green-soft ভ্যারিয়েবলগুলোই (নাম না বদলে) পুরো অ্যাপ জুড়ে
-       Letterhead, Tab, Button, Badge, Border, Row-Hover, Print — সবখানে ব্যবহৃত হয়, তাই শুধু
-       এখানে মান বদলে দিলেই লগইন পেজ থেকে শুরু করে সব স্ক্রিনে নতুন রং স্বয়ংক্রিয়ভাবে প্রতিফলিত হয়। */
-    --green-deep:#7005F2;   /* আগে #7005F2 ছিল — এখন Deep Purple */
-    --green-mid:#0539F2;    /* আগে #0539F2 ছিল — এখন Primary Blue */
-    --green-soft:#ECE9FE;   /* আগে #e2ebf5 ছিল — এখন হালকা Purple/Blue টিন্ট */
+    /* ================= থিম সিস্টেম =================
+       --green-deep/--green-mid/--green-soft — পুরো অ্যাপের Letterhead, Tab, Button, Badge, Border,
+       Table Header, Row-Hover, Dropdown Picker সবকিছু এই তিনটা ভ্যারিয়েবল দিয়েই রঙিন হয়। এখানে
+       ডিফল্ট (কোনো data-theme attribute ছাড়া) মান হলো বর্তমানের আগের/চেনা সবুজ থিম — এটাই "থিম ১:
+       ক্লাসিক"। নিচে আরও ৪টা থিম [data-theme="..."] দিয়ে সংজ্ঞায়িত করা আছে; <html> ট্যাগে
+       data-theme অ্যাট্রিবিউট বসালেই (setTheme() ফাংশন দিয়ে, থিম বাটনে ক্লিক করলে) পুরো অ্যাপ সেই
+       থিমে বদলে যায় — কোনো Layout/Structure বদলায় না, শুধু রং। পছন্দ localStorage-এ browser-ভিত্তিক
+       সংরক্ষিত থাকে (Firebase-এ নয়, কারণ এটা প্রতিটা ডিভাইসের নিজস্ব প্রদর্শন-পছন্দ, রিপোর্ট ডেটা নয়)। */
+    --green-deep:#123a5e;
+    --green-mid:#2f6690;
+    --green-soft:#e2ebf5;
     --gold:#b5651d;
     --gold-soft:#f6e6d6;
     --red:#a13d3d;
     --red-soft:#f6e3e0;
-    /* "সম্পন্ন/জমা হয়েছে"-এর মতো ইতিবাচক অবস্থার জন্য আলাদা Success রং — নতুন প্যালেটের
-       Green Accent (#13E836) থেকে তৈরি, যাতে "সফল হয়েছে" বোঝাতে সবুজের চেনা visual cue হারিয়ে
-       না যায় (Danger-এর জন্য --red-ও একইভাবে ইচ্ছাকৃতভাবে অপরিবর্তিত রাখা হয়েছে)। */
+    /* "সম্পন্ন/জমা হয়েছে"-এর মতো ইতিবাচক অবস্থার জন্য আলাদা Success রং — সব থিমেই অপরিবর্তিত থাকে,
+       যাতে থিম যাই হোক "সফল হয়েছে" বোঝাতে সবুজের চেনা visual cue সবসময় কাজ করে (Danger-এর জন্য
+       --red-ও একইভাবে ইচ্ছাকৃতভাবে সব থিমে অপরিবর্তিত)। */
     --success-soft:#E3FBEA;
     --success-deep:#0E9F35;
     --shadow:0 1px 2px rgba(18,58,94,.07),0 8px 24px rgba(18,58,94,.09);
-    --accent-blue:#0539F2;
-    --accent-purple-deep:#7005F2;
-    --accent-purple-soft:#9A68FD;
     --accent-green:#13E836;
-    --accent-gradient:linear-gradient(135deg,var(--accent-blue),var(--accent-purple-deep));
+    /* বাকি সব accent-চালিত UI Element (Primary Button, Focus Ring, Active-Tab Glow, Selection
+       Highlight) --green-deep/--green-mid থেকেই রং নেয়, তাই থিম বদলালে ওগুলোও স্বয়ংক্রিয়ভাবে বদলে যায়। */
+    --accent-gradient:linear-gradient(135deg,var(--green-deep),var(--green-mid));
   }
+  /* ============ থিম ২: ওশেন ব্লু (Primary Blue) ============ */
+  :root[data-theme="ocean"]{
+    --green-deep:#0539F2;
+    --green-mid:#3D6BFB;
+    --green-soft:#E6ECFF;
+  }
+  /* ============ থিম ৩: রয়্যাল পার্পল (Deep + Soft Purple) ============ */
+  :root[data-theme="purple"]{
+    --green-deep:#7005F2;
+    --green-mid:#9A68FD;
+    --green-soft:#F1E9FE;
+  }
+  /* ============ থিম ৪: ফ্রেশ গ্রিন (Green Accent) ============ */
+  :root[data-theme="green"]{
+    --green-deep:#0B7A2B;
+    --green-mid:#13E836;
+    --green-soft:#E3FBEA;
+  }
+  /* ============ থিম ৫: ব্লু-পার্পল গ্র্যাডিয়েন্ট (Modern Mix) ============ */
+  :root[data-theme="gradient"]{
+    --green-deep:#7005F2;
+    --green-mid:#0539F2;
+    --green-soft:#ECE9FE;
+  }
+  .theme-switcher{position:relative;display:flex;align-items:center;}
+  .theme-switcher select{
+    width:auto;padding:8px 30px 8px 12px;border-radius:999px;border:1px solid var(--paper-line);
+    background:#fff;font-size:12.5px;font-weight:600;color:var(--green-deep);cursor:pointer;
+  }
+  .theme-swatch-row{display:flex;gap:4px;margin-left:6px;}
+  .theme-swatch{width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--paper-line);cursor:pointer;flex:0 0 auto;}
+  .theme-swatch.active{box-shadow:0 0 0 2px var(--green-deep);}
   *{box-sizing:border-box;}
   body{
     margin:0;
@@ -72,7 +107,7 @@
     padding:9px 16px;border-radius:999px;font-size:13.5px;cursor:pointer;font-weight:600;transition:.15s;
   }
   .tab-btn:hover{border-color:var(--green-mid);}
-  .tab-btn.active{background:var(--green-deep);border-color:var(--green-deep);color:#f4efdf;box-shadow:0 0 0 2px rgba(112,5,242,.18);}
+  .tab-btn.active{background:var(--green-deep);border-color:var(--green-deep);color:#f4efdf;box-shadow:0 0 0 2px var(--green-soft);}
 
   .card{background:#fff;border:1px solid var(--paper-line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:18px;}
   .card h2{font-family:'Noto Serif Bengali',serif;font-size:16px;margin:0 0 14px;color:var(--green-deep);border-bottom:2px solid var(--green-soft);padding-bottom:8px;}
@@ -82,12 +117,12 @@
     width:100%;padding:8px 10px;border:1px solid var(--paper-line);border-radius:8px;
     font-family:inherit;font-size:13.5px;background:#fffdf8;color:var(--ink);
   }
-  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-blue);outline-offset:1px;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--green-mid);outline-offset:1px;}
   .field{margin-bottom:10px;}
   .hint{font-size:11px;color:#8a8471;margin-top:3px;}
   .btn{border:none;border-radius:9px;padding:9px 18px;font-weight:700;font-size:13.5px;cursor:pointer;transition:.15s;font-family:inherit;}
   .btn-primary{background:var(--accent-gradient);color:#fff;}
-  .btn-primary:hover{background:linear-gradient(135deg,var(--accent-purple-deep),var(--accent-purple-soft));}
+  .btn-primary:hover{background:var(--green-mid);}
   .btn-gold{background:var(--gold-soft);color:var(--gold);border:1px solid var(--gold);}
   .btn-gold:hover{background:var(--gold);color:#fff;}
   .btn-success{background:var(--success-soft);color:var(--success-deep);border:1px solid var(--success-deep);}
@@ -183,7 +218,7 @@
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
   .history-list{display:flex;flex-direction:column;gap:8px;}
   .history-item{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--paper-line);border-radius:10px;padding:10px 14px;background:#fffdf8;transition:border-color .15s,box-shadow .15s;}
-  .history-item:hover{border-color:var(--accent-purple-soft);box-shadow:0 2px 10px rgba(112,5,242,.10);}
+  .history-item:hover{border-color:var(--green-mid);box-shadow:0 2px 10px var(--green-soft);}
   .history-item strong{font-family:'Noto Serif Bengali',serif;}
   .search-box{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end;}
   .search-box select{max-width:220px;}
@@ -455,7 +490,7 @@ function defaultState(){
     currentMonth: isoDate(new Date()).slice(0,7),
     nextRowId: 25,
     nextHolidayId: 49,
-    notifications:{ callmebotApiKey:'', notifyPhone:'966507120769', appLink:'' }
+    notifications:{ callmebotApiKey:'', notifyPhone:'8801821299993', appLink:'' }
   };
 }
 
@@ -467,7 +502,7 @@ function parseRange(s){
 
 function migrateState(state){
   if(!state.notifications){
-    state.notifications = { callmebotApiKey:'', notifyPhone:'966507120769', appLink:'' };
+    state.notifications = { callmebotApiKey:'', notifyPhone:'8801821299993', appLink:'' };
   }
   if(state.version === DATA_VERSION) return state;
   if(!state.worker) state.worker = defaultState().worker;
@@ -538,6 +573,39 @@ function roleForEmail(email){
   if(e === ROLE_ACCOUNTS.viewer.email.toLowerCase()) return 'viewer';
   return null;
 }
+
+/* ================= থিম সিস্টেম =================
+   ৫টা থিম — <html> ট্যাগে data-theme অ্যাট্রিবিউট বসিয়ে CSS-এর [data-theme] রুল (উপরে <style>-এ
+   সংজ্ঞায়িত) সক্রিয় করা হয়। localStorage-এ browser-ভিত্তিক সংরক্ষিত থাকে (Firebase-এ নয়) — এটা
+   প্রতিটা ডিভাইসের নিজস্ব প্রদর্শন-পছন্দ, রিপোর্টের ডেটা নয়, তাই ডিভাইস ভেদে আলাদা থিম রাখা যাবে। */
+const THEMES = [
+  {id:'classic',  label:'🟢 ক্লাসিক (বর্তমান)'},
+  {id:'ocean',    label:'🔵 ওশেন ব্লু'},
+  {id:'purple',   label:'🟣 রয়্যাল পার্পল'},
+  {id:'green',    label:'🟢 ফ্রেশ গ্রিন'},
+  {id:'gradient', label:'🌈 ব্লু-পার্পল গ্র্যাডিয়েন্ট'}
+];
+const THEME_STORAGE_KEY = 'mr_theme_v1';
+function getCurrentTheme(){
+  try{ return localStorage.getItem(THEME_STORAGE_KEY) || 'classic'; }catch(e){ return 'classic'; }
+}
+function applyTheme(id){
+  if(!id || id==='classic') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', id);
+}
+function setTheme(id){
+  try{ localStorage.setItem(THEME_STORAGE_KEY, id); }catch(e){ console.error('theme save failed', e); }
+  applyTheme(id);
+}
+function themeSwitcherHTML(){
+  const current = getCurrentTheme();
+  return `<div class="theme-switcher no-print">
+    <select onchange="setTheme(this.value)" aria-label="থিম নির্বাচন করুন">
+      ${THEMES.map(t=>`<option value="${t.id}" ${current===t.id?'selected':''}>${t.label}</option>`).join('')}
+    </select>
+  </div>`;
+}
+applyTheme(getCurrentTheme()); // পেজ লোড হওয়ার সাথে সাথেই আগের পছন্দের থিম প্রয়োগ হয়ে যায় (Login পেজেও)
 
 const STORAGE_KEY = 'mr_state_v1';
 async function loadState(){
@@ -745,6 +813,7 @@ function renderLogin(err){
         <p>মাঠকর্মীদের মাসিক অগ্রিম কর্মসূচি (ওয়েব সংস্করণ)</p>
       </div>
     </div>
+    <div style="display:flex;justify-content:center;margin-top:10px;">${themeSwitcherHTML()}</div>
     ${SHOW_FORGOT ? forgotPasswordHTML(err) : loginFormHTML(err)}`;
   const el = document.getElementById('loginEmail') || document.getElementById('recoveryEmail');
   if(el) el.focus();
@@ -832,6 +901,7 @@ function render(){
       <span class="tab-btn" style="margin-left:auto;background:var(--gold-soft);color:var(--gold);border-color:var(--gold);cursor:default;">
         ${CURRENT_ROLE==='admin'?'👑 এডমিন':(CURRENT_ROLE==='user'?'👤 ইউজার':'👁 শুধু দেখা')}: ${esc(ROLE_ACCOUNTS[CURRENT_ROLE].label)}
       </span>
+      ${themeSwitcherHTML()}
       <button class="tab-btn" style="color:var(--red);" onclick="doLogout()">🔒 লগআউট</button>
     </div>
     <div id="tab-content"></div>
@@ -1804,8 +1874,8 @@ function renderGroupedBarChart(data, series){
       const barH = (val/maxVal)*chartH;
       const x = groupX + si*barW;
       const y = padT + chartH - barH;
-      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(barW-2).toFixed(1)}" height="${barH.toFixed(1)}" fill="${s.color}" rx="2"/>`;
-      if(val>0) bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-4).toFixed(1)}" font-size="8" text-anchor="middle" fill="${s.color}" font-weight="700">${bnNum(val)}</text>`;
+      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(barW-2).toFixed(1)}" height="${barH.toFixed(1)}" style="fill:${s.color}" rx="2"/>`;
+      if(val>0) bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-4).toFixed(1)}" font-size="8" text-anchor="middle" style="fill:${s.color}" font-weight="700">${bnNum(val)}</text>`;
     });
     const lx=(groupX+groupInnerWidth/2).toFixed(1), ly=(h-padB+14).toFixed(1);
     labels += `<text x="${lx}" y="${ly}" font-size="10" text-anchor="end" fill="#5a5648" transform="rotate(-40 ${lx} ${ly})">${d.label}</text>`;
@@ -1828,8 +1898,8 @@ function renderBarChart(data){
     const x = padL + i*gap + (gap-barW)/2;
     const y = padT + chartH - barH;
     const lx = (x+barW/2).toFixed(1), ly = (h-padB+14).toFixed(1);
-    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="#0539F2" rx="3"/>`;
-    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="11" text-anchor="middle" fill="#7005F2" font-weight="700">${bnNum(d.count)}</text>`;
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" style="fill:var(--green-mid)" rx="3"/>`;
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="11" text-anchor="middle" style="fill:var(--green-deep)" font-weight="700">${bnNum(d.count)}</text>`;
     labels += `<text x="${lx}" y="${ly}" font-size="10" text-anchor="end" fill="#5a5648" transform="rotate(-40 ${lx} ${ly})">${d.label}</text>`;
   });
   const axisLine = `<line x1="${padL}" y1="${padT+chartH}" x2="${w-padR}" y2="${padT+chartH}" stroke="#d8d2bd" stroke-width="1"/>`;
@@ -1878,7 +1948,7 @@ function renderPieChart(ipc, epi){
   return `
   <div style="display:flex;align-items:center;gap:28px;flex-wrap:wrap;justify-content:center;">
     <svg viewBox="0 0 220 220" style="width:200px;height:200px;flex:0 0 auto;" xmlns="http://www.w3.org/2000/svg">
-      <path d="${slicePath(0, ipcAngle)}" fill="#0539F2"/>
+      <path d="${slicePath(0, ipcAngle)}" style="fill:var(--green-mid)"/>
       <path d="${slicePath(ipcAngle, 360)}" fill="#b5651d"/>
       <circle cx="110" cy="110" r="52" fill="#fff"/>
       <text x="110" y="104" text-anchor="middle" font-size="12" fill="#1b2430" font-weight="600">সর্বমোট</text>
@@ -1886,7 +1956,7 @@ function renderPieChart(ipc, epi){
     </svg>
     <div style="font-size:14px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        <span style="width:14px;height:14px;background:#0539F2;border-radius:3px;display:inline-block;"></span>
+        <span style="width:14px;height:14px;background:var(--green-mid);border-radius:3px;display:inline-block;"></span>
         <span>IPC — <strong>${bnNum(ipc)}</strong> (${bnNum(ipcPct)}%)</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1903,12 +1973,12 @@ function dashboardTabHTML(){
   const totalEPI = monthly.reduce((s,d)=>s+d.epi, 0);
   const houseSums = allRowsFlat().reduce((a,r)=>{a.newC+=r.newC;a.cancelC+=r.cancelC;a.total+=r.total;return a;}, {newC:0,cancelC:0,total:0});
   const programSeries = [
-    {key:'count', label:'সর্বমোট কর্মসূচি', color:'#0539F2'},
+    {key:'count', label:'সর্বমোট কর্মসূচি', color:'var(--green-mid)'},
     {key:'ipc', label:'IPC', color:'#b5651d'},
     {key:'epi', label:'EPI', color:'#a13d3d'}
   ];
   const houseSeries = [
-    {key:'total', label:'সর্বমোট পরিদর্শিত বাড়ি', color:'#0539F2'},
+    {key:'total', label:'সর্বমোট পরিদর্শিত বাড়ি', color:'var(--green-mid)'},
     {key:'ipc', label:'IPC-এর আওতায়', color:'#b5651d'},
     {key:'epi', label:'EPI-এর আওতায়', color:'#a13d3d'}
   ];
