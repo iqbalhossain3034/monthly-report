@@ -17,18 +17,23 @@
     --ink:#1b2430;
     --paper:#f3f6fb;
     --paper-line:#d8e0ec;
-    --green-deep:#123a5e;
-    --green-mid:#2f6690;
-    --green-soft:#e2ebf5;
+    /* ================= পুরো থিম এখন নতুন Brand Palette দিয়ে চালিত =================
+       --green-deep/--green-mid/--green-soft ভ্যারিয়েবলগুলোই (নাম না বদলে) পুরো অ্যাপ জুড়ে
+       Letterhead, Tab, Button, Badge, Border, Row-Hover, Print — সবখানে ব্যবহৃত হয়, তাই শুধু
+       এখানে মান বদলে দিলেই লগইন পেজ থেকে শুরু করে সব স্ক্রিনে নতুন রং স্বয়ংক্রিয়ভাবে প্রতিফলিত হয়। */
+    --green-deep:#7005F2;   /* আগে #7005F2 ছিল — এখন Deep Purple */
+    --green-mid:#0539F2;    /* আগে #0539F2 ছিল — এখন Primary Blue */
+    --green-soft:#ECE9FE;   /* আগে #e2ebf5 ছিল — এখন হালকা Purple/Blue টিন্ট */
     --gold:#b5651d;
     --gold-soft:#f6e6d6;
     --red:#a13d3d;
     --red-soft:#f6e3e0;
+    /* "সম্পন্ন/জমা হয়েছে"-এর মতো ইতিবাচক অবস্থার জন্য আলাদা Success রং — নতুন প্যালেটের
+       Green Accent (#13E836) থেকে তৈরি, যাতে "সফল হয়েছে" বোঝাতে সবুজের চেনা visual cue হারিয়ে
+       না যায় (Danger-এর জন্য --red-ও একইভাবে ইচ্ছাকৃতভাবে অপরিবর্তিত রাখা হয়েছে)। */
+    --success-soft:#E3FBEA;
+    --success-deep:#0E9F35;
     --shadow:0 1px 2px rgba(18,58,94,.07),0 8px 24px rgba(18,58,94,.09);
-    /* ================= নতুন Accent প্যালেট (আধুনিক Enhancement, বিদ্যমান থিমের উপরে) =================
-       এই রংগুলো মূল থিম (green-deep/green-mid) প্রতিস্থাপন করছে না — শুধু বাছাই করা কিছু জায়গায়
-       (Primary Button, Focus Ring, Active-State Glow, Selection Highlight) accent হিসেবে ব্যবহৃত
-       হচ্ছে, যাতে অ্যাপটা একটু বেশি আধুনিক লাগে কিন্তু পুরনো পরিচিত চেহারা/Layout একই থাকে। */
     --accent-blue:#0539F2;
     --accent-purple-deep:#7005F2;
     --accent-purple-soft:#9A68FD;
@@ -85,7 +90,7 @@
   .btn-primary:hover{background:linear-gradient(135deg,var(--accent-purple-deep),var(--accent-purple-soft));}
   .btn-gold{background:var(--gold-soft);color:var(--gold);border:1px solid var(--gold);}
   .btn-gold:hover{background:var(--gold);color:#fff;}
-  .btn-success{background:var(--green-soft);color:var(--green-deep);border:1px solid var(--green-deep);}
+  .btn-success{background:var(--success-soft);color:var(--success-deep);border:1px solid var(--success-deep);}
   .btn-success:hover{background:var(--green-deep);color:#fff;}
   .btn-outline{background:#fff;border:1px solid var(--paper-line);color:var(--ink);}
   .btn-outline:hover{border-color:var(--green-mid);}
@@ -165,7 +170,7 @@
 
   td select, td input{font-size:12px;padding:5px 4px;min-width:64px;}
   .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;}
-  .badge.ok{background:var(--green-soft);color:var(--green-deep);box-shadow:inset 3px 0 0 var(--accent-green);padding-left:12px;}
+  .badge.ok{background:var(--success-soft);color:var(--success-deep);}
   .badge.pending{background:var(--gold-soft);color:var(--gold);}
   .muted{color:#8a8471;}
   .top-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
@@ -1823,8 +1828,8 @@ function renderBarChart(data){
     const x = padL + i*gap + (gap-barW)/2;
     const y = padT + chartH - barH;
     const lx = (x+barW/2).toFixed(1), ly = (h-padB+14).toFixed(1);
-    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="#2f6690" rx="3"/>`;
-    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="11" text-anchor="middle" fill="#123a5e" font-weight="700">${bnNum(d.count)}</text>`;
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="#0539F2" rx="3"/>`;
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="11" text-anchor="middle" fill="#7005F2" font-weight="700">${bnNum(d.count)}</text>`;
     labels += `<text x="${lx}" y="${ly}" font-size="10" text-anchor="end" fill="#5a5648" transform="rotate(-40 ${lx} ${ly})">${d.label}</text>`;
   });
   const axisLine = `<line x1="${padL}" y1="${padT+chartH}" x2="${w-padR}" y2="${padT+chartH}" stroke="#d8d2bd" stroke-width="1"/>`;
@@ -1873,7 +1878,7 @@ function renderPieChart(ipc, epi){
   return `
   <div style="display:flex;align-items:center;gap:28px;flex-wrap:wrap;justify-content:center;">
     <svg viewBox="0 0 220 220" style="width:200px;height:200px;flex:0 0 auto;" xmlns="http://www.w3.org/2000/svg">
-      <path d="${slicePath(0, ipcAngle)}" fill="#2f6690"/>
+      <path d="${slicePath(0, ipcAngle)}" fill="#0539F2"/>
       <path d="${slicePath(ipcAngle, 360)}" fill="#b5651d"/>
       <circle cx="110" cy="110" r="52" fill="#fff"/>
       <text x="110" y="104" text-anchor="middle" font-size="12" fill="#1b2430" font-weight="600">সর্বমোট</text>
@@ -1881,7 +1886,7 @@ function renderPieChart(ipc, epi){
     </svg>
     <div style="font-size:14px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        <span style="width:14px;height:14px;background:#2f6690;border-radius:3px;display:inline-block;"></span>
+        <span style="width:14px;height:14px;background:#0539F2;border-radius:3px;display:inline-block;"></span>
         <span>IPC — <strong>${bnNum(ipc)}</strong> (${bnNum(ipcPct)}%)</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -1898,12 +1903,12 @@ function dashboardTabHTML(){
   const totalEPI = monthly.reduce((s,d)=>s+d.epi, 0);
   const houseSums = allRowsFlat().reduce((a,r)=>{a.newC+=r.newC;a.cancelC+=r.cancelC;a.total+=r.total;return a;}, {newC:0,cancelC:0,total:0});
   const programSeries = [
-    {key:'count', label:'সর্বমোট কর্মসূচি', color:'#2f6690'},
+    {key:'count', label:'সর্বমোট কর্মসূচি', color:'#0539F2'},
     {key:'ipc', label:'IPC', color:'#b5651d'},
     {key:'epi', label:'EPI', color:'#a13d3d'}
   ];
   const houseSeries = [
-    {key:'total', label:'সর্বমোট পরিদর্শিত বাড়ি', color:'#2f6690'},
+    {key:'total', label:'সর্বমোট পরিদর্শিত বাড়ি', color:'#0539F2'},
     {key:'ipc', label:'IPC-এর আওতায়', color:'#b5651d'},
     {key:'epi', label:'EPI-এর আওতায়', color:'#a13d3d'}
   ];
