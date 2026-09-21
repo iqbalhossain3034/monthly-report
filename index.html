@@ -455,7 +455,7 @@ function defaultState(){
     currentMonth: isoDate(new Date()).slice(0,7),
     nextRowId: 25,
     nextHolidayId: 49,
-    notifications:{ callmebotApiKey:'', notifyPhone:'0507120769', appLink:'' }
+    notifications:{ callmebotApiKey:'', notifyPhone:'966507120769', appLink:'' }
   };
 }
 
@@ -467,7 +467,7 @@ function parseRange(s){
 
 function migrateState(state){
   if(!state.notifications){
-    state.notifications = { callmebotApiKey:'', notifyPhone:'8801821299993', appLink:'' };
+    state.notifications = { callmebotApiKey:'', notifyPhone:'966507120769', appLink:'' };
   }
   if(state.version === DATA_VERSION) return state;
   if(!state.worker) state.worker = defaultState().worker;
