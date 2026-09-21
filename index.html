@@ -25,6 +25,15 @@
     --red:#a13d3d;
     --red-soft:#f6e3e0;
     --shadow:0 1px 2px rgba(18,58,94,.07),0 8px 24px rgba(18,58,94,.09);
+    /* ================= নতুন Accent প্যালেট (আধুনিক Enhancement, বিদ্যমান থিমের উপরে) =================
+       এই রংগুলো মূল থিম (green-deep/green-mid) প্রতিস্থাপন করছে না — শুধু বাছাই করা কিছু জায়গায়
+       (Primary Button, Focus Ring, Active-State Glow, Selection Highlight) accent হিসেবে ব্যবহৃত
+       হচ্ছে, যাতে অ্যাপটা একটু বেশি আধুনিক লাগে কিন্তু পুরনো পরিচিত চেহারা/Layout একই থাকে। */
+    --accent-blue:#0539F2;
+    --accent-purple-deep:#7005F2;
+    --accent-purple-soft:#9A68FD;
+    --accent-green:#13E836;
+    --accent-gradient:linear-gradient(135deg,var(--accent-blue),var(--accent-purple-deep));
   }
   *{box-sizing:border-box;}
   body{
@@ -58,7 +67,7 @@
     padding:9px 16px;border-radius:999px;font-size:13.5px;cursor:pointer;font-weight:600;transition:.15s;
   }
   .tab-btn:hover{border-color:var(--green-mid);}
-  .tab-btn.active{background:var(--green-deep);border-color:var(--green-deep);color:#f4efdf;}
+  .tab-btn.active{background:var(--green-deep);border-color:var(--green-deep);color:#f4efdf;box-shadow:0 0 0 2px rgba(112,5,242,.18);}
 
   .card{background:#fff;border:1px solid var(--paper-line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:18px;}
   .card h2{font-family:'Noto Serif Bengali',serif;font-size:16px;margin:0 0 14px;color:var(--green-deep);border-bottom:2px solid var(--green-soft);padding-bottom:8px;}
@@ -68,12 +77,12 @@
     width:100%;padding:8px 10px;border:1px solid var(--paper-line);border-radius:8px;
     font-family:inherit;font-size:13.5px;background:#fffdf8;color:var(--ink);
   }
-  input:focus,select:focus,textarea:focus{outline:2px solid var(--green-mid);outline-offset:1px;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-blue);outline-offset:1px;}
   .field{margin-bottom:10px;}
   .hint{font-size:11px;color:#8a8471;margin-top:3px;}
   .btn{border:none;border-radius:9px;padding:9px 18px;font-weight:700;font-size:13.5px;cursor:pointer;transition:.15s;font-family:inherit;}
-  .btn-primary{background:var(--green-deep);color:#f4efdf;}
-  .btn-primary:hover{background:var(--green-mid);}
+  .btn-primary{background:var(--accent-gradient);color:#fff;}
+  .btn-primary:hover{background:linear-gradient(135deg,var(--accent-purple-deep),var(--accent-purple-soft));}
   .btn-gold{background:var(--gold-soft);color:var(--gold);border:1px solid var(--gold);}
   .btn-gold:hover{background:var(--gold);color:#fff;}
   .btn-success{background:var(--green-soft);color:var(--green-deep);border:1px solid var(--green-deep);}
@@ -156,7 +165,7 @@
 
   td select, td input{font-size:12px;padding:5px 4px;min-width:64px;}
   .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;}
-  .badge.ok{background:var(--green-soft);color:var(--green-deep);}
+  .badge.ok{background:var(--green-soft);color:var(--green-deep);box-shadow:inset 3px 0 0 var(--accent-green);padding-left:12px;}
   .badge.pending{background:var(--gold-soft);color:var(--gold);}
   .muted{color:#8a8471;}
   .top-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
@@ -168,7 +177,8 @@
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
   .history-list{display:flex;flex-direction:column;gap:8px;}
-  .history-item{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--paper-line);border-radius:10px;padding:10px 14px;background:#fffdf8;}
+  .history-item{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--paper-line);border-radius:10px;padding:10px 14px;background:#fffdf8;transition:border-color .15s,box-shadow .15s;}
+  .history-item:hover{border-color:var(--accent-purple-soft);box-shadow:0 2px 10px rgba(112,5,242,.10);}
   .history-item strong{font-family:'Noto Serif Bengali',serif;}
   .search-box{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end;}
   .search-box select{max-width:220px;}
@@ -336,7 +346,7 @@
     padding:9px 10px;border-radius:8px;font-size:13px;cursor:pointer;text-align:center;
   }
   .picker-option:hover{background:var(--green-soft);}
-  .picker-option.selected{background:var(--green-deep);color:#f4efdf;font-weight:600;}
+  .picker-option.selected{background:var(--accent-gradient);color:#fff;font-weight:600;}
   .picker-empty{padding:16px;text-align:center;color:#8a8471;font-size:12.5px;}
 </style>
 </head>
@@ -439,7 +449,8 @@ function defaultState(){
     submitted:{},
     currentMonth: isoDate(new Date()).slice(0,7),
     nextRowId: 25,
-    nextHolidayId: 49
+    nextHolidayId: 49,
+    notifications:{ callmebotApiKey:'', notifyPhone:'8801821299993', appLink:'' }
   };
 }
 
@@ -450,6 +461,9 @@ function parseRange(s){
 }
 
 function migrateState(state){
+  if(!state.notifications){
+    state.notifications = { callmebotApiKey:'', notifyPhone:'8801821299993', appLink:'' };
+  }
   if(state.version === DATA_VERSION) return state;
   if(!state.worker) state.worker = defaultState().worker;
   if(!state.worker.union) state.worker.union = 'সদাসদী';
@@ -498,7 +512,7 @@ let CURRENT_MONTH = isoDate(new Date()).slice(0,7);
 const OFFICE_EMAIL = 'office@monthly-report-app-1866a.firebaseapp.com';
 const ROLE_ACCOUNTS = {
   admin:  { email:'iqbal.hossain3034@gmail.com', label:'Iqbal' },
-  user:   { email:'shimul.mai1722@gmail.com',      label:'Shimul' },
+  user:   { email:'shimulmai1722@gmail.com',      label:'Shimul' },
   viewer: { email:OFFICE_EMAIL,                   label:'Office (শুধু দেখা)' }
 };
 const USERNAME_TO_EMAIL = {
@@ -1328,6 +1342,37 @@ async function printReport(){
   window.print();
 }
 
+/* ================= WhatsApp-এ স্বয়ংক্রিয়ভাবে PDF শেয়ার (শুধু Mobile "PDF ডাউনলোড করুন" বাটনের জন্য) =================
+   এই নম্বরটাই সেই নির্দিষ্ট WhatsApp নম্বর যেখানে রিপোর্ট পাঠাতে হবে। ⚠ ব্রাউজারের Web Share API
+   কোনো নির্দিষ্ট Contact/Number আগে থেকে বেছে দিতে পারে না (এটা ব্রাউজার/OS-এর নিরাপত্তা সীমাবদ্ধতা,
+   কোনো ব্যক্তিগত WhatsApp নম্বরে ফাইল সম্পূর্ণ silent/zero-tap পাঠানোর কোনো Public API নেই) — তাই
+   এই নম্বরটা শুধু Share sheet-এর সাথে যাওয়া বার্তায় মনে করিয়ে দেওয়ার জন্য ব্যবহার হয়; ব্যবহারকারীকে
+   শেয়ার-তালিকায় WhatsApp বেছে, তারপর এই নম্বর/কন্টাক্ট নিজে সিলেক্ট করে "Send" চাপতে হবে। */
+const WHATSAPP_TARGET_NUMBER = '+8801821299993';
+
+/* pdf.save() (নিচে অপরিবর্তিত রাখা হয়েছে) দিয়ে যে একই PDF ইতিমধ্যে ডাউনলোড হয়ে গেছে, ঠিক সেই
+   একই Blob দিয়ে (কোনো নতুন Template/আলাদা Generation ছাড়াই) ফোনের নেটিভ Share Sheet খোলার চেষ্টা
+   করা হয় — সমর্থিত ব্রাউজারে (Android Chrome/Edge, আধুনিক iOS Safari) WhatsApp আইকন সেই তালিকায়
+   PDF-সহ থাকবে। অসমর্থিত ব্রাউজারে (ডেস্কটপ, পুরনো ব্রাউজার) কিছুই ঘটে না — আগের মতোই শুধু ডাউনলোড
+   হয়ে যায়, কোনো error দেখানো হয় না। */
+async function tryShareGeneratedPDF(pdf, fileName){
+  try{
+    if(!(navigator.share && navigator.canShare)) return;
+    const blob = pdf.output('blob');
+    const file = new File([blob], fileName, {type:'application/pdf'});
+    if(!navigator.canShare({files:[file]})) return;
+    await navigator.share({
+      files:[file],
+      title: fileName,
+      text: `মাসিক রিপোর্ট — অনুগ্রহ করে WhatsApp-এ ${WHATSAPP_TARGET_NUMBER} নম্বরে পাঠান`
+    });
+    toast('📤 শেয়ার তালিকা খোলা হয়েছে — সেখান থেকে WhatsApp বেছে নিয়ে পাঠিয়ে দিন', 4500);
+  }catch(e){
+    // ব্যবহারকারী শেয়ার বাতিল করলে (AbortError) — কোনো সমস্যা নেই, PDF তো আগেই ডাউনলোড হয়ে গেছে
+    if(e && e.name !== 'AbortError'){ console.error('whatsapp share failed', e); }
+  }
+}
+
 async function downloadPDFViaImage(){
   if(!document.getElementById('reportSheet')) return;
   if(!(window.html2canvas && window.jspdf)){
@@ -1350,8 +1395,11 @@ async function downloadPDFViaImage(){
     const imgW = pageWidth;
     const imgH = canvas.height * imgW / canvas.width;
     pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgW, Math.min(imgH, pageHeight));
-    pdf.save(reportFileBaseName(CURRENT_MONTH) + '.pdf');
+    const fileName = reportFileBaseName(CURRENT_MONTH) + '.pdf';
+    pdf.save(fileName);
     toast('✅ PDF ডাউনলোড হয়েছে — এখন হোয়াটসঅ্যাপ খুলে ফাইলটি Attach করে পাঠাতে পারেন', 5000);
+    // উপরের ডাউনলোড অপরিবর্তিত রেখে, একই PDF দিয়ে সমর্থিত ফোনে WhatsApp শেয়ার সীট খোলার চেষ্টা
+    await tryShareGeneratedPDF(pdf, fileName);
   }catch(e){
     console.error('pdf export failed', e);
     toast('⚠ PDF তৈরি করতে সমস্যা হয়েছে, আবার চেষ্টা করুন', 4500);
@@ -1365,11 +1413,35 @@ window.addEventListener('beforeunload', function(e){
     e.returnValue = '';
   }
 });
+/* ================= WhatsApp টেক্সট নোটিফিকেশন (CallMeBot দিয়ে) =================
+   CallMeBot-এর Free API শুধু Text Message পাঠাতে পারে (PDF/ফাইল নয়) — তাই রিপোর্ট জমা হওয়ার
+   সাথে সাথে PDF-টা এখানে সরাসরি পাঠানো হয় না, বরং শুধু একটা টেক্সট নোটিফিকেশন যায় যে রিপোর্ট
+   রেডি হয়ে গেছে। "কর্মী ও কেন্দ্র তালিকা" ট্যাবে (শুধু এডমিন দেখতে পারবেন) API Key/নম্বর/লিংক
+   সেট করা না থাকলে এই ফাংশন চুপচাপ কিছুই করে না। */
+async function sendCallMeBotNotification(text){
+  try{
+    const cfg = STATE.notifications;
+    if(!cfg || !cfg.callmebotApiKey || !cfg.notifyPhone) return;
+    const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(cfg.notifyPhone)}&text=${encodeURIComponent(text)}&apikey=${encodeURIComponent(cfg.callmebotApiKey)}`;
+    await fetch(url, {mode:'no-cors'});
+  }catch(e){
+    console.error('CallMeBot notification failed', e);
+  }
+}
+function buildSubmitNotificationText(ym){
+  const [y,m] = ym.split('-').map(Number);
+  const monthLabel = BN_MONTHS[m-1] + ' ' + bnNum(y);
+  const cfg = STATE.notifications;
+  let text = `✅ মাসিক রিপোর্ট জমা হয়েছে!\n\nমাস: ${monthLabel}\nকর্মী: ${STATE.worker.name}\n\nরিপোর্টটি এখন প্রিন্ট অথবা WhatsApp-এ পাঠানোর জন্য প্রস্তুত।`;
+  if(cfg && cfg.appLink){ text += `\n\n🔗 রিপোর্ট খুলতে: ${cfg.appLink}`; }
+  return text;
+}
 async function submitMonth(){
   if(!remarksFullyFilled(CURRENT_MONTH)){
     const proceed = confirm('⚠ এই মাসে কিছু ছুটির দিন/শুক্রবারে এখনও মন্তব্য বসানো হয়নি।\n\nআগে "🗓 Fill Remark" বাটনে চেপে ছুটিগুলো বসিয়ে নিন, তারপর জমা দিন।\n\n(তারপরও এভাবেই জমা দিতে চাইলে "OK" চাপুন, নাহলে "Cancel" চেপে আগে Fill Remark করে নিন)');
     if(!proceed) return;
   }
+  const submittedYm = CURRENT_MONTH;
   STATE.submitted[CURRENT_MONTH] = new Date().toISOString();
   delete getMonthEntry(CURRENT_MONTH).activeIdx;
   SAVING_IN_PROGRESS = true;
@@ -1384,6 +1456,7 @@ async function submitMonth(){
   }
   SAVING_IN_PROGRESS = false;
   if(ok){
+    sendCallMeBotNotification(buildSubmitNotificationText(submittedYm));
     const nextYm = nextMonthStr(CURRENT_MONTH);
     CURRENT_MONTH = nextYm;
     STATE.currentMonth = nextYm;
@@ -1521,6 +1594,7 @@ function removeSignature(){
   renderTab();
 }
 function adminLoginSettingsHTML(){
+  const n = STATE.notifications || { callmebotApiKey:'', notifyPhone:'8801821299993', appLink:'' };
   return `
   <div class="card">
     <h2>লগইন তথ্য (শুধু এডমিন দেখতে পারবেন)</h2>
@@ -1529,7 +1603,43 @@ function adminLoginSettingsHTML(){
       <div class="field"><label>👑 এডমিন ইমেইল</label><input type="text" value="${esc(ROLE_ACCOUNTS.admin.email)}" disabled></div>
       <div class="field"><label>👤 ইউজার ইমেইল</label><input type="text" value="${esc(ROLE_ACCOUNTS.user.email)}" disabled></div>
     </div>
+  </div>
+  <div class="card">
+    <h2>WhatsApp নোটিফিকেশন (রিপোর্ট জমা হলে স্বয়ংক্রিয় বার্তা)</h2>
+    <p class="hint" style="margin-top:-6px;margin-bottom:12px;">
+      কেউ মাসিক রিপোর্ট "জমা" দিলেই নিচে দেওয়া নম্বরে একটা WhatsApp টেক্সট বার্তা স্বয়ংক্রিয়ভাবে যাবে —
+      এটা <a href="https://www.callmebot.com/blog/free-api-whatsapp-messages/" target="_blank" rel="noopener">CallMeBot</a>-এর Free API ব্যবহার করে। ⚠ এই Free API দিয়ে শুধু <strong>টেক্সট</strong> পাঠানো যায়, PDF/ফাইল সরাসরি পাঠানো যায় না — তাই নিচে "অ্যাপ লিংক" দিয়ে দিলে সেটা বার্তায় জুড়ে যাবে, যেখানে ট্যাপ করে গিয়ে প্রিন্ট/PDF বাটন চাপা যাবে।
+    </p>
+    <p class="hint" style="margin-bottom:12px;">
+      <strong>API Key পাওয়ার ধাপ (একবারই করতে হবে, যেই ফোনে নোটিফিকেশন পেতে চান সেটা থেকে):</strong><br>
+      ১) <a href="https://www.callmebot.com/blog/free-api-whatsapp-messages/" target="_blank" rel="noopener">এই পেজ থেকে</a> CallMeBot-এর বর্তমান বট নম্বরটি Contact-এ যোগ করুন (নম্বরটা মাঝেমাঝে বদলায়, তাই পেজ থেকেই দেখে নিন)<br>
+      ২) সেই Contact-এ WhatsApp-এ লিখে পাঠান: <em>I allow callmebot to send me messages</em><br>
+      ৩) কিছুক্ষণের মধ্যে বট একটা APIKEY-সহ রিপ্লাই পাঠাবে — সেটা নিচে বসান
+    </p>
+    <div class="grid">
+      <div class="field"><label>CallMeBot API Key</label><input type="text" id="notify-callmebotApiKey" value="${esc(n.callmebotApiKey)}" placeholder="বট থেকে পাওয়া APIKEY" oninput="updateNotifyConfig('callmebotApiKey',this.value)"></div>
+      <div class="field"><label>নোটিফিকেশন WhatsApp নম্বর</label><input type="text" id="notify-notifyPhone" value="${esc(n.notifyPhone)}" placeholder="দেশের কোড-সহ, যেমন 8801XXXXXXXXX" oninput="updateNotifyConfig('notifyPhone',this.value)"></div>
+      <div class="field"><label>অ্যাপ লিংক (ঐচ্ছিক)</label><input type="text" id="notify-appLink" value="${esc(n.appLink)}" placeholder="যেমন https://yourapp.web.app" oninput="updateNotifyConfig('appLink',this.value)"></div>
+    </div>
+    <div class="row-actions" style="margin-top:0;">
+      <button class="btn btn-outline btn-sm" onclick="testWhatsAppNotification()">📤 টেস্ট মেসেজ পাঠান</button>
+    </div>
   </div>`;
+}
+function updateNotifyConfig(field,val){
+  if(!STATE.notifications) STATE.notifications = { callmebotApiKey:'', notifyPhone:'8801821299993', appLink:'' };
+  STATE.notifications[field] = val;
+  saveState();
+}
+async function testWhatsAppNotification(){
+  const n = STATE.notifications;
+  if(!n || !n.callmebotApiKey || !n.notifyPhone){
+    toast('⚠ আগে API Key ও নম্বর পূরণ করুন', 3500);
+    return;
+  }
+  toast('📤 টেস্ট মেসেজ পাঠানো হচ্ছে...', 3000);
+  await sendCallMeBotNotification('✅ এটা মাসিক রিপোর্ট অ্যাপ থেকে একটা টেস্ট মেসেজ — সেটআপ ঠিকভাবে কাজ করছে।');
+  toast('পাঠানো হয়েছে — WhatsApp চেক করুন (না পেলে API Key/নম্বর আবার যাচাই করুন)', 4500);
 }
 function renderTabPreservingFocus(){
   const active = document.activeElement;
