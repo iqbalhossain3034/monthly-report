@@ -579,7 +579,7 @@ function roleForEmail(email){
    সংজ্ঞায়িত) সক্রিয় করা হয়। localStorage-এ browser-ভিত্তিক সংরক্ষিত থাকে (Firebase-এ নয়) — এটা
    প্রতিটা ডিভাইসের নিজস্ব প্রদর্শন-পছন্দ, রিপোর্টের ডেটা নয়, তাই ডিভাইস ভেদে আলাদা থিম রাখা যাবে। */
 const THEMES = [
-  {id:'classic',  label:'🟢 ক্লাসিক (বর্তমান)'},
+  {id:'classic',  label:'⭐ ক্লাসিক (বর্তমান)'},
   {id:'ocean',    label:'🔵 ওশেন ব্লু'},
   {id:'purple',   label:'🟣 রয়্যাল পার্পল'},
   {id:'green',    label:'🟢 ফ্রেশ গ্রিন'},
@@ -813,7 +813,6 @@ function renderLogin(err){
         <p>মাঠকর্মীদের মাসিক অগ্রিম কর্মসূচি (ওয়েব সংস্করণ)</p>
       </div>
     </div>
-    <div style="display:flex;justify-content:center;margin-top:10px;">${themeSwitcherHTML()}</div>
     ${SHOW_FORGOT ? forgotPasswordHTML(err) : loginFormHTML(err)}`;
   const el = document.getElementById('loginEmail') || document.getElementById('recoveryEmail');
   if(el) el.focus();
