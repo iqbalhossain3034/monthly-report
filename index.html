@@ -1,76 +1,1763 @@
-ছুটির তালিকা ট্যাব — প্যাচ (monthly_report.html)
-দুইটি জায়গায় পরিবর্তন করতে হবে।
----
-ধাপ ১: CSS যোগ করুন
-`<style>` এর ভেতরে, `.picker-empty{...}` লাইনটার ঠিক নিচে (`</style>` এর আগে) এই দুই লাইন বসান:
-```css
-  /* ছুটির তালিকায় নতুন/ডুপ্লিকেট সারি কয়েক সেকেন্ড হলুদ হয়ে থাকে, যাতে সহজে খুঁজে পাওয়া যায় */
-  .hl-row td{background:#fff3b0!important;}
-  .hcopy-panel{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--green-soft);border:1px solid var(--paper-line);border-radius:10px;padding:12px 14px;margin-bottom:14px;}
-```
----
-ধাপ ২: পুরনো ছুটির ফাংশনগুলো বদলান
-`function holidaysTabHTML(){` থেকে শুরু করে `function deleteHoliday(id){ ... }` এর শেষ পর্যন্ত
-(অর্থাৎ `holidaysTabHTML`, `updateHoliday`, `addHoliday`, `deleteHoliday` — এই চারটি ফাংশন) পুরোটা মুছে নিচের কোডটা বসান।
-`function allRowsFlat(){` এর আগ পর্যন্ত যা আছে সব এই কোড দিয়ে বদলাবে।
-```js
-/* ================= ছুটির তালিকা ================= */
-let HOLIDAY_YEAR = null;        // null = স্বয়ংক্রিয় (চলতি বছর থাকলে সেটা, নাহলে "সব")
-let HOLIDAY_HL_ID = null;       // যে সারিটা সদ্য যোগ/ডুপ্লিকেট হয়েছে (হলুদ হাইলাইট)
-let HOLIDAY_DATE_DIRTY = false; // তারিখ বদলানো হয়েছে কিন্তু সারি এখনো নতুন করে সাজানো হয়নি
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>মাসিক অগ্রিম কর্মসূচি</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=Noto+Serif+Bengali:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#1b2430;
+    --paper:#f3f6fb;
+    --paper-line:#d8e0ec;
+    /* ================= থিম সিস্টেম =================
+       --green-deep/--green-mid/--green-soft — পুরো অ্যাপের Letterhead, Tab, Button, Badge, Border,
+       Table Header, Row-Hover, Dropdown Picker সবকিছু এই তিনটা ভ্যারিয়েবল দিয়েই রঙিন হয়। এখানে
+       ডিফল্ট (কোনো data-theme attribute ছাড়া) মান হলো বর্তমানের আগের/চেনা সবুজ থিম — এটাই "থিম ১:
+       ক্লাসিক"। নিচে আরও ৪টা থিম [data-theme="..."] দিয়ে সংজ্ঞায়িত করা আছে; <html> ট্যাগে
+       data-theme অ্যাট্রিবিউট বসালেই (setTheme() ফাংশন দিয়ে, থিম বাটনে ক্লিক করলে) পুরো অ্যাপ সেই
+       থিমে বদলে যায় — কোনো Layout/Structure বদলায় না, শুধু রং। পছন্দ localStorage-এ browser-ভিত্তিক
+       সংরক্ষিত থাকে (Firebase-এ নয়, কারণ এটা প্রতিটা ডিভাইসের নিজস্ব প্রদর্শন-পছন্দ, রিপোর্ট ডেটা নয়)। */
+    --green-deep:#123a5e;
+    --green-mid:#2f6690;
+    --green-soft:#e2ebf5;
+    --gold:#b5651d;
+    --gold-soft:#f6e6d6;
+    --red:#a13d3d;
+    --red-soft:#f6e3e0;
+    /* "সম্পন্ন/জমা হয়েছে"-এর মতো ইতিবাচক অবস্থার জন্য আলাদা Success রং — সব থিমেই অপরিবর্তিত থাকে,
+       যাতে থিম যাই হোক "সফল হয়েছে" বোঝাতে সবুজের চেনা visual cue সবসময় কাজ করে (Danger-এর জন্য
+       --red-ও একইভাবে ইচ্ছাকৃতভাবে সব থিমে অপরিবর্তিত)। */
+    --success-soft:#E3FBEA;
+    --success-deep:#0E9F35;
+    --shadow:0 1px 2px rgba(18,58,94,.07),0 8px 24px rgba(18,58,94,.09);
+    --accent-green:#13E836;
+    /* বাকি সব accent-চালিত UI Element (Primary Button, Focus Ring, Active-Tab Glow, Selection
+       Highlight) --green-deep/--green-mid থেকেই রং নেয়, তাই থিম বদলালে ওগুলোও স্বয়ংক্রিয়ভাবে বদলে যায়। */
+    --accent-gradient:linear-gradient(135deg,var(--green-deep),var(--green-mid));
+  }
+  /* ============ থিম ২: ওশেন ব্লু (Primary Blue) ============ */
+  :root[data-theme="ocean"]{
+    --green-deep:#0539F2;
+    --green-mid:#3D6BFB;
+    --green-soft:#E6ECFF;
+  }
+  /* ============ থিম ৩: রয়্যাল পার্পল (Deep + Soft Purple) ============ */
+  :root[data-theme="purple"]{
+    --green-deep:#7005F2;
+    --green-mid:#9A68FD;
+    --green-soft:#F1E9FE;
+  }
+  /* ============ থিম ৪: ফ্রেশ গ্রিন (Green Accent) ============ */
+  :root[data-theme="green"]{
+    --green-deep:#0B7A2B;
+    --green-mid:#13E836;
+    --green-soft:#E3FBEA;
+  }
+  /* ============ থিম ৫: ব্লু-পার্পল গ্র্যাডিয়েন্ট (Modern Mix) ============ */
+  :root[data-theme="gradient"]{
+    --green-deep:#7005F2;
+    --green-mid:#0539F2;
+    --green-soft:#ECE9FE;
+  }
+  .theme-switcher{position:relative;display:flex;align-items:center;}
+  .theme-switcher select{
+    width:auto;padding:8px 30px 8px 12px;border-radius:999px;border:1px solid var(--paper-line);
+    background:#fff;font-size:12.5px;font-weight:600;color:var(--green-deep);cursor:pointer;
+  }
+  .theme-swatch-row{display:flex;gap:4px;margin-left:6px;}
+  .theme-swatch{width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--paper-line);cursor:pointer;flex:0 0 auto;}
+  .theme-swatch.active{box-shadow:0 0 0 2px var(--green-deep);}
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Noto Sans Bengali','Hind Siliguri','Vrinda','SolaimanLipi',system-ui,sans-serif;
+    font-size:14px;
+    line-height:1.5;
+  }
+  .app{max-width:min(2000px, 98vw);margin:0 auto;padding:20px 18px 60px;}
 
-function isLeapYear(y){ return (y%4===0 && y%100!==0) || y%400===0; }
-function holidayYears(){
+  .letterhead{
+    display:flex;align-items:center;gap:16px;
+    background:linear-gradient(135deg,var(--green-deep),var(--green-mid));
+    color:#f4efdf;border-radius:14px;padding:18px 22px;box-shadow:var(--shadow);
+  }
+  .seal{
+    width:52px;height:52px;border-radius:50%;border:2px solid #d8c48e;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Noto Serif Bengali',serif;font-weight:700;font-size:20px;
+    color:#f4efdf;flex:0 0 auto;
+    background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.12), transparent 60%);
+  }
+  .letterhead h1{font-family:'Noto Serif Bengali',serif;font-size:19px;margin:0 0 2px;font-weight:700;letter-spacing:.2px;}
+  .letterhead p{margin:0;font-size:12.5px;opacity:.85;}
+
+  .tabs{display:flex;gap:6px;margin:18px 0 16px;flex-wrap:wrap;}
+  .tab-btn{
+    border:1px solid var(--paper-line);background:#fff;color:var(--green-deep);
+    padding:9px 16px;border-radius:999px;font-size:13.5px;cursor:pointer;font-weight:600;transition:.15s;
+  }
+  .tab-btn:hover{border-color:var(--green-mid);}
+  .tab-btn.active{background:var(--green-deep);border-color:var(--green-deep);color:#f4efdf;box-shadow:0 0 0 2px var(--green-soft);}
+
+  .card{background:#fff;border:1px solid var(--paper-line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:18px;}
+  .card h2{font-family:'Noto Serif Bengali',serif;font-size:16px;margin:0 0 14px;color:var(--green-deep);border-bottom:2px solid var(--green-soft);padding-bottom:8px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;}
+  label{display:block;font-size:12px;color:#5a5648;margin-bottom:4px;font-weight:600;}
+  input[type=text],input[type=number],input[type=month],input[type=date],select,textarea{
+    width:100%;padding:8px 10px;border:1px solid var(--paper-line);border-radius:8px;
+    font-family:inherit;font-size:13.5px;background:#fffdf8;color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--green-mid);outline-offset:1px;}
+  .field{margin-bottom:10px;}
+  .hint{font-size:11px;color:#8a8471;margin-top:3px;}
+  .btn{border:none;border-radius:9px;padding:9px 18px;font-weight:700;font-size:13.5px;cursor:pointer;transition:.15s;font-family:inherit;}
+  .btn-primary{background:var(--accent-gradient);color:#fff;}
+  .btn-primary:hover{background:var(--green-mid);}
+  .btn-gold{background:var(--gold-soft);color:var(--gold);border:1px solid var(--gold);}
+  .btn-gold:hover{background:var(--gold);color:#fff;}
+  .btn-success{background:var(--success-soft);color:var(--success-deep);border:1px solid var(--success-deep);}
+  .btn-success:hover{background:var(--green-deep);color:#fff;}
+  .btn-outline{background:#fff;border:1px solid var(--paper-line);color:var(--ink);}
+  .btn-outline:hover{border-color:var(--green-mid);}
+  .btn-danger{background:var(--red-soft);color:var(--red);border:1px solid var(--red);}
+  .btn-sm{padding:5px 10px;font-size:12px;border-radius:7px;}
+  .row-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+
+  /* ================= রিপোর্ট টেবিল স্ক্রিন-ফিট (কোনো Horizontal Scroll ছাড়াই) =================
+     যেকোনো কম্পিউটার স্ক্রিনে টেবিলটা তার স্বাভাবিক (natural) প্রস্থে যদি কন্টেইনারের চেয়ে চওড়া হয়ে যায়,
+     তাহলে fitReportTable() (JS) পুরো টেবিলটাকে (তারিখ কলামসহ, কোনো কলাম না লুকিয়েই) CSS zoom দিয়ে
+     ছোট করে পুরোপুরি স্ক্রিনে বসিয়ে দেয় — ফলে পাশে স্ক্রল করার দরকার পড়ে না। (আগে transform:scale()
+     ব্যবহার করা হয়েছিল, কিন্তু তাতে ডেস্কটপে "নির্বাচন" কলামের <select> ড্রপডাউন ভুল জায়গায়/দেরিতে
+     খুলছিল — তাই zoom-এ পাল্টানো হয়েছে, যেটা আসল লেআউট রিফ্লো করে বলে native ড্রপডাউন ঠিকমতো কাজ করে।)
+     .table-wrap-এর overflow-x:auto শুধু নিরাপত্তার জন্য রাখা (JS বন্ধ থাকলে ফলব্যাক হিসেবে)। */
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{border:1px solid var(--paper-line);padding:6px 6px;text-align:center;vertical-align:middle;}
+  thead th{background:var(--green-soft);color:var(--green-deep);font-weight:700;font-size:11px;}
+  .select-col .picker-btn{font-size:11.5px;width:100%;}
+  .select-col .picker-mobile{display:none;}
+  .select-col{min-width:125px;}
+  .remark-col{min-width:230px;}
+  .village-col{min-width:105px;}
+  .owner-col{min-width:190px;}
+  .block-col{min-width:44px;white-space:nowrap;}
+
+  /* ================= মোবাইল ভিউ =================
+     ছোট স্ক্রিনে (৭৬৮px-এর নিচে) শুধু তারিখ, বার, আর ব্লক নং থেকে নির্বাচন পর্যন্ত কলাম দেখানো হয়;
+     বাকি কলাম (মৌজা, ইউনিয়ন, ওয়ার্ড নং, গ্রামের নাম, পরিদর্শিত বাড়ি) লুকানো থাকে।
+     স্ক্রল করলে টেবিলের হেডার উপরে স্থিতিশীল (sticky) থাকে — শুধু মোবাইলেই, ডেস্কটপে স্বাভাবিক থাকে। */
+  @media screen and (max-width:768px), screen and (max-height:500px) and (orientation:landscape){
+    .mobile-hide{display:none!important;}
+    .mobile-hide-col{display:none;}
+    .report-sheet thead th{position:sticky;top:0;z-index:5;}
+    .report-sheet table{font-size:10.5px;table-layout:fixed;}
+    .report-sheet th,.report-sheet td{padding:4px 3px;}
+    .report-sheet colgroup col:nth-child(1){width:12%!important;}
+    .report-sheet colgroup col:nth-child(2){width:9%!important;}
+    .report-sheet colgroup col:nth-child(12){width:9%!important;}
+    .report-sheet colgroup col:nth-child(13){width:19%!important;}
+    .report-sheet colgroup col:nth-child(14){width:8%!important;}
+    .report-sheet colgroup col:nth-child(15){width:26%!important;}
+    .report-sheet colgroup col:nth-child(16){width:15%!important;}
+    .select-col{min-width:0;}
+    /* মোবাইলে আগের সুন্দরভাবে কাজ করা native <select> ফিরিয়ে আনা হচ্ছে — ডেস্কটপের কাস্টম পপ-আপ
+       পিকারটা (যেটা এখানে বেশি জায়গা নেয়) মোবাইলে দেখানো হচ্ছে না। দুটো ব্যবস্থাই একসাথে DOM-এ
+       আছে (একটাতে টাইপ করলে row.code বদলায়, যেটাই স্ক্রিনে দেখা যাচ্ছে সেটাই সবসময় renderTab()-এর
+       পর সঠিক মান দিয়ে নতুন করে তৈরি হয়) — এখানে শুধু CSS দিয়ে কোনটা দেখানো হবে ঠিক করা হচ্ছে। */
+    .select-col .picker-desktop{display:none;}
+    .select-col .picker-mobile{display:block;width:100%;font-size:9.5px;padding:5px 4px;}
+    .remark-col{min-width:0;}
+    .owner-col{min-width:0;}
+    .block-col{min-width:0;}
+  }
+  tbody tr:nth-child(even){background:var(--green-soft);}
+  tbody tr.off-day{background:#c7c7c2!important;}
+  tbody tr.off-day td{color:#3a3a36;}
+  tbody tr:focus-within{background:#d3e3f7!important;box-shadow:inset 3px 0 0 var(--green-mid);}
+  tbody tr:focus-within td{color:var(--green-deep);font-weight:600;}
+  tbody tr.active-row{background:#d3e3f7!important;box-shadow:inset 3px 0 0 var(--green-mid);}
+  tbody tr.active-row td{color:var(--green-deep);font-weight:600;}
+
+  /* ================= Row Hover Highlight (Cursor অনুসরণ করে সম্পূর্ণ Row Highlight) =================
+     Cursor যে Row-এর উপরে (যেকোনো Column, Select-col সহ) থাকবে, সেই সম্পূর্ণ Row-টি হাইলাইট হবে।
+     এটি pure CSS :hover ভিত্তিক — তাই Cursor অন্য Row-তে গেলে আগের Row-এর হাইলাইট নিজে থেকেই সরে
+     যায় এবং নতুন Row হাইলাইট হয়, একই সাথে একাধিক Row কখনোই হাইলাইট থাকে না। শুধু Visual —
+     এর ফলে Row-এর Data/Formula/Dropdown মান কোনোভাবেই বদলায় না। off-day (ছুটির দিন) সারিতেও
+     Hover কাজ করে, যাতে বড় রিপোর্টেও Cursor কোন সারিতে আছে সহজেই বোঝা যায়।
+     রং একদম উপরের Letterhead-এ (গণপ্রজাতন্ত্রী বাংলাদেশ সরকার ব্যানারে) ব্যবহৃত সেই একই
+     gradient — linear-gradient(135deg,var(--green-deep),var(--green-mid)) — সরাসরি বসানো হয়েছে,
+     সাথে Letterhead-এর মতোই হালকা ক্রিম রঙের (#f4efdf) লেখা, যাতে গাঢ় ব্যাকগ্রাউন্ডেও স্পষ্ট পড়া যায়। */
+  @media (hover:hover){
+    tbody tr:hover{background:linear-gradient(135deg,var(--green-deep),var(--green-mid))!important;box-shadow:none;}
+    tbody tr:hover td{color:#f4efdf;font-weight:600;}
+    tbody tr:hover td .muted{color:#f4efdf!important;opacity:.85;}
+    tbody tr:hover td.select-col{background:transparent!important;}
+  }
+
+  td select, td input{font-size:12px;padding:5px 4px;min-width:64px;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;}
+  .badge.ok{background:var(--success-soft);color:var(--success-deep);}
+  .badge.pending{background:var(--gold-soft);color:var(--gold);}
+  .muted{color:#8a8471;}
+  .top-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+  .toast{
+    position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    background:var(--green-deep);color:#f4efdf;padding:10px 20px;border-radius:999px;
+    font-size:13px;font-weight:600;box-shadow:var(--shadow);opacity:0;pointer-events:none;
+    transition:opacity .25s, transform .25s;z-index:50;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+  .history-list{display:flex;flex-direction:column;gap:8px;}
+  .history-item{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--paper-line);border-radius:10px;padding:10px 14px;background:#fffdf8;transition:border-color .15s,box-shadow .15s;}
+  .history-item:hover{border-color:var(--green-mid);box-shadow:0 2px 10px var(--green-soft);}
+  .history-item strong{font-family:'Noto Serif Bengali',serif;}
+  .search-box{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end;}
+  .search-box select{max-width:220px;}
+  .empty{text-align:center;color:#8a8471;padding:26px 10px;font-size:13px;}
+  .setup-table td{text-align:left;}
+  .setup-table th{white-space:nowrap;}
+  .footer-note{font-size:11px;color:#8a8471;text-align:center;margin-top:28px;}
+  .select-col{background:#f1efe4;border-left:2px dashed #b8ab7e!important;}
+  thead th.select-col{background:#e9e2c9;color:#7a6f4a;}
+  .report-head{margin-bottom:14px;}
+  .report-head-title{font-family:'Noto Serif Bengali',serif;font-size:14px;line-height:1.6;text-align:center;word-break:keep-all;overflow-wrap:normal;white-space:normal;hyphens:none;}
+  .report-head-month{font-size:13px;display:inline-block;margin-top:4px;}
+  .report-worker{display:flex;justify-content:space-between;gap:20px;font-size:13px;margin-bottom:14px;line-height:1.8;flex-wrap:wrap;}
+  .report-note{font-size:11.5px;color:#5a5648;margin:14px 0 20px;}
+  .report-sign{font-size:13px;line-height:1.9;text-align:right;}
+  .sign-row{display:flex;justify-content:flex-end;align-items:flex-end;gap:4px;}
+  .sign-blank{position:relative;display:inline-block;width:170px;border-bottom:1px solid #1b2430;height:16px;}
+  .signature-img{display:none;}
+  .center-table input{min-width:60px;}
+  .print-only{display:none;}
+  /* "office" (শুধু দেখা) ভূমিকার জন্য — reportSheet-এর ভেতরে এডিট-উপযোগী কন্ট্রোল (ড্রপডাউন/ইনপুট)
+     লুকিয়ে তার বদলে প্রিন্ট-স্টাইল প্লেইন টেক্সট দেখানো হয়, যাতে ভুলবশতও কোনো ডেটা বদলাতে না পারে */
+  .report-sheet.viewer-mode .no-print{display:none!important;}
+  .report-sheet.viewer-mode .print-only{display:inline!important;}
+  td input[type="text"]{width:100%;border:1px solid #d8d2bd;border-radius:5px;padding:3px 6px;font:inherit;background:#fff;}
+  @media print{
+    @page{ size:A4 portrait; margin:6mm; }
+    .tabs,.top-bar,.row-actions,.no-print,.letterhead,.footer-note{display:none!important;}
+    body{background:#fff;font-size:9px;}
+    .app{max-width:100%;padding:0;}
+    .card{box-shadow:none;border:none;padding:0;margin:0;}
+    select.no-print{display:none!important;}
+    .report-head{margin-bottom:8px;}
+    .report-head-title{font-size:12px;line-height:1.35;}
+    .report-head-month{font-size:11px;}
+    .report-worker{font-size:10.5px;margin-bottom:8px;line-height:1.5;}
+    .report-note{font-size:9px;margin:8px 0 12px;}
+    .report-sign{font-size:10.5px;line-height:1.5;margin-top:16px;}
+    .sign-blank{width:170px;height:14px;}
+    .signature-img{display:block!important;position:absolute;left:50%;bottom:0px;transform:translateX(-50%);height:42px;max-width:160px;object-fit:contain;}
+    table{font-size:12.5px;table-layout:fixed;width:100%;border:1px solid #000;}
+    .toast{display:none!important;}
+    /* স্ক্রিনের জন্য নির্ধারিত min-width গুলো প্রিন্টে বাতিল — নাহলে <colgroup>-এর নির্দিষ্ট
+       শতাংশ-ভিত্তিক প্রস্থের সাথে সংঘর্ষ বেঁধে কলাম একে অপরের উপর উঠে যায় (ওভারল্যাপ) */
+    .select-col,.remark-col,.village-col,.owner-col,.block-col{min-width:0!important;}
+    td.remark-col{text-align:center;}
+    .table-wrap{border:1.25px solid #000;padding:2px;overflow:visible!important;}
+    /* স্ক্রিনে দেখানোর screen-fit zoom (ইনলাইন স্টাইল হিসেবে বসানো) প্রিন্টে যেন কোনোভাবেই
+       প্রভাব না ফেলে — printReport() আসল লাইভ পাতাটাই প্রিন্ট করে (অফস্ক্রিন ক্লোনটা শুধু ফন্ট-সাইজ/
+       সারি-উচ্চতা মাপার জন্য ব্যবহৃত হয়, প্রিন্টের আগেই সরিয়ে ফেলা হয়) */
+    .report-table-scale{zoom:1!important;}
+    thead th{font-size:9px;font-weight:400;line-height:1.15;padding:3px 2px;background:#e8e8e8!important;color:#000!important;}
+    th,td{padding:3px 4px;line-height:1.25;overflow-wrap:normal;word-break:keep-all;border:0.5px solid #555;vertical-align:middle;}
+    tbody tr:nth-child(even):not(.off-day){background:#fff!important;}
+    .print-only{display:inline;white-space:normal;overflow-wrap:normal;word-break:keep-all;}
+    .muted{color:#000;font-weight:700;}
+    td input[type="text"]{border:none;}
+    /* যেকোনো "সর্বশেষ নির্বাচিত সারি" সবুজ হাইলাইট এবং হোভার হাইলাইট প্রিন্ট/PDF-এ কখনোই দেখানো হবে না */
+    tbody tr.active-row,tbody tr:focus-within,tbody tr:hover{background:transparent!important;box-shadow:none!important;}
+    tbody tr.active-row td,tbody tr:focus-within td,tbody tr:hover td{color:inherit!important;font-weight:inherit!important;}
+    /* প্রতিটি ঘরের প্রকৃত ফন্ট-সাইজ/wrap (autofitCells) এবং প্রতিটি সারির উচ্চতা (stretchRowsToFillPage)
+       আগে থেকে মেপে --fit-size/--fit-wrap/--row-h কাস্টম প্রপার্টি হিসেবে বসানো থাকে; সেট করা না থাকলে যুক্তিসঙ্গত ডিফল্টে ফিরে যাবে */
+    tbody td{font-size:var(--fit-size, 12.5px);white-space:var(--fit-wrap, nowrap);}
+    tbody tr{height:var(--row-h, auto);}
+    /* কলাম-প্রস্থ এখন উপরের <colgroup>-এ নির্ধারিত (গ্রুপ-হেডারসহ সঠিকভাবে কাজ করার জন্য) */
+    tbody tr{page-break-inside:avoid;}
+    thead{display:table-header-group;}
+  }
+  /* উপরের @media print রুলের হুবহু প্রতিরূপ, কিন্তু ক্লাস হিসেবে —
+     PDF এক্সপোর্টের সময় html2canvas এই ক্লাসটা ব্যবহার করে ঠিক প্রিন্টের মতোই এক-পাতার কম্প্যাক্ট লেআউট ক্যাপচার করে */
+  .pdf-export-mode{background:#fff;font-size:9px;}
+  .pdf-export-mode .app{max-width:100%;padding:0;}
+  .pdf-export-mode .tabs,.pdf-export-mode .top-bar,.pdf-export-mode .row-actions,
+  .pdf-export-mode .no-print,.pdf-export-mode .letterhead,.pdf-export-mode .footer-note{display:none!important;}
+  .pdf-export-mode .card{box-shadow:none;border:none;padding:0;margin:0;}
+  .pdf-export-mode select.no-print{display:none!important;}
+  .pdf-export-mode .report-head{margin-bottom:8px;}
+  .pdf-export-mode .report-head-title{font-size:12px;line-height:1.35;}
+  .pdf-export-mode .report-head-month{font-size:11px;}
+  .pdf-export-mode .report-worker{font-size:10.5px;margin-bottom:8px;line-height:1.5;}
+  .pdf-export-mode .report-note{font-size:9px;margin:8px 0 12px;}
+  .pdf-export-mode .report-sign{font-size:10.5px;line-height:1.5;margin-top:16px;}
+  .pdf-export-mode .sign-blank{width:170px;height:14px;}
+  .pdf-export-mode .signature-img{display:block!important;position:absolute;left:50%;bottom:0px;transform:translateX(-50%);height:42px;max-width:160px;object-fit:contain;}
+  .pdf-export-mode table{font-size:12.5px;table-layout:fixed;width:100%;border:1px solid #000;}
+  .pdf-export-mode .toast{display:none!important;}
+  .pdf-export-mode .select-col,.pdf-export-mode .remark-col,.pdf-export-mode .village-col,.pdf-export-mode .owner-col,.pdf-export-mode .block-col{min-width:0!important;}
+  .pdf-export-mode td.remark-col{text-align:center;}
+  .pdf-export-mode .table-wrap{border:1.25px solid #000;padding:2px;overflow:visible!important;}
+  .pdf-export-mode .report-table-scale{zoom:1!important;}
+  .pdf-export-mode thead th{font-size:9px;font-weight:400;line-height:1.15;padding:3px 2px;background:#e8e8e8!important;color:#000!important;}
+  .pdf-export-mode th,.pdf-export-mode td{padding:3px 4px;line-height:1.25;overflow-wrap:normal;word-break:keep-all;border:0.15px solid #000;vertical-align:middle;}
+  .pdf-export-mode tbody tr:nth-child(even):not(.off-day){background:#fff!important;}
+  .pdf-export-mode tbody tr.active-row,.pdf-export-mode tbody tr:focus-within,.pdf-export-mode tbody tr:hover{background:transparent!important;box-shadow:none!important;}
+  .pdf-export-mode tbody tr.active-row td,.pdf-export-mode tbody tr:focus-within td,.pdf-export-mode tbody tr:hover td{color:inherit!important;font-weight:inherit!important;}
+  .pdf-export-mode .print-only{display:inline;white-space:normal;overflow-wrap:normal;word-break:keep-all;}
+  .pdf-export-mode .muted{color:#000;font-weight:700;}
+  .pdf-export-mode td input[type="text"]{border:none;}
+  /* প্রিন্টের মতোই — autofitCells/stretchRowsToFillPage-এর হিসাব এখান থেকেই আসল ফন্ট/উচ্চতা নির্ধারণ করে */
+  .pdf-export-mode tbody td{font-size:var(--fit-size, 12.5px);white-space:var(--fit-wrap, nowrap);}
+  .pdf-export-mode tbody tr{height:var(--row-h, auto);}
+  /* কলাম-প্রস্থ এখন <colgroup>-এ নির্ধারিত */
+  /* ================= মোবাইলে PDF ওভারল্যাপ বাগ ফিক্স =================
+     সমস্যা: autofitCells()/stretchRowsToFillPage() একটা অফস্ক্রিন ক্লোনের (position:fixed) উপর মাপ নেয়,
+     কিন্তু @media screen (max-width:768px) নিয়মটি ভিউপোর্টের প্রস্থ অনুযায়ী সবসময় সক্রিয় থাকে —
+     ক্লোনের নিজের width:198mm সেট করা সত্ত্বেও। ফলে মোবাইল ফোনে মাপার সময় "মোবাইল ভিউ"-এর জন্য
+     লুকানো কলাম (mobile-hide) ও সংকুচিত কলাম-প্রস্থ (!important) ব্যবহার হয়ে যেত — যেটা আসল
+     প্রিন্ট/PDF-এর পূর্ণ ১৫-কলাম লেআউট থেকে সম্পূর্ণ ভিন্ন। এর ফলে ভুল ফন্ট-সাইজ/সারি-উচ্চতা হিসাব
+     হয়ে আসল প্রিন্টে লেখা একে অপরের উপর উঠে যেত (ওভারল্যাপ)। নিচের নিয়মগুলো .pdf-export-mode
+     ক্লোনের ভেতরে মোবাইল-ভিউয়ের প্রভাব সম্পূর্ণ বাতিল করে সবসময় ডেস্কটপ/প্রিন্ট লেআউট বাধ্য করছে। */
+  .pdf-export-mode col.mobile-hide{display:table-column!important;}
+  .pdf-export-mode td.mobile-hide,.pdf-export-mode th.mobile-hide{display:table-cell!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(1){width:8.5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(2){width:6.5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(3){width:4.5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(4){width:7.5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(5){width:6.5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(6){width:5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(7){width:8%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(8){width:8%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(9){width:4%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(10){width:4%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(11){width:4%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(12){width:5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(13){width:12%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(14){width:4.5%!important;}
+  .pdf-export-mode .report-sheet colgroup col:nth-child(15){width:12%!important;}
+  .pdf-export-mode .report-sheet table{font-size:12.5px!important;table-layout:fixed!important;}
+  .pdf-export-mode .report-sheet th,.pdf-export-mode .report-sheet td{padding:3px 4px!important;}
+  @media (max-width:640px){
+    .letterhead{flex-direction:column;text-align:center;}
+    table{font-size:11px;}
+  }
+
+  /* ================= "নির্বাচন" কলামের কাস্টম পপ-আপ পিকার =================
+     আগে এখানে native <select> ব্যবহার হতো — ডেস্কটপে zoom/স্কেলিং-এর সাথে native ড্রপডাউনের
+     পপআপ পজিশনিং ঠিকমতো মেলে না (ভুল জায়গায় খোলে, ভুল অপশনে ক্লিক পড়ে যাওয়ার ঝুঁকি থাকে)।
+     তাই এখন এটা একটা বাটন — ক্লিক করলে স্ক্রিনের মাঝখানে (fixed position, টেবিলের স্ক্রল/জুম
+     অবস্থা যাই থাকুক না কেন) একটা সার্চযোগ্য তালিকা পপ-আপ হয়ে খোলে। */
+  .picker-btn{
+    width:100%;text-align:left;background:#fffdf8;border:1px solid var(--paper-line);border-radius:7px;
+    padding:6px 9px;font:inherit;font-size:11.5px;color:var(--ink);cursor:pointer;
+  }
+  .picker-btn:hover{border-color:var(--green-mid);}
+  .picker-overlay{
+    position:fixed;inset:0;background:rgba(18,24,32,.5);z-index:2000;
+    display:flex;align-items:center;justify-content:center;padding:16px;
+  }
+  .picker-modal{
+    background:#fff;border-radius:14px;box-shadow:var(--shadow);width:100%;max-width:380px;
+    max-height:80vh;display:flex;flex-direction:column;overflow:hidden;
+  }
+  .picker-modal-head{
+    display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px;
+    font-family:'Noto Serif Bengali',serif;color:var(--green-deep);flex:0 0 auto;
+  }
+  .picker-close-btn{
+    border:none;background:var(--green-soft);color:var(--green-deep);width:28px;height:28px;
+    border-radius:50%;font-size:14px;cursor:pointer;line-height:1;
+  }
+  .picker-close-btn:hover{background:var(--green-deep);color:#fff;}
+  .picker-search{margin:0 16px 10px;width:auto;flex:0 0 auto;}
+  .picker-list{overflow-y:auto;flex:1 1 auto;padding:0 8px 10px;}
+  .picker-option{
+    padding:9px 10px;border-radius:8px;font-size:13px;cursor:pointer;text-align:center;
+  }
+  .picker-option:hover{background:var(--green-soft);}
+  .picker-option.selected{background:var(--accent-gradient);color:#fff;font-weight:600;}
+  .picker-empty{padding:16px;text-align:center;color:#8a8471;font-size:12.5px;}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+<div id="codePickerRoot"></div>
+
+<script>
+/* =========================================================
+   হেল্পার
+========================================================= */
+const BN_DIGIT = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
+function bnNum(n){ return String(n).replace(/[0-9]/g, d=>BN_DIGIT[d]); }
+const BN_DAYS = ['রবি','সোম','মঙ্গল','বুধ','বৃহস্পতি','শুক্র','শনি'];
+const BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+const EN_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function reportFileBaseName(ym){
+  const [y,mm] = ym.split('-').map(Number);
+  return `Monthly Report- ${EN_MONTHS[mm-1]} ${y}`;
+}
+function isoDate(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
+function nextMonthStr(ym){
+  const [y,m] = ym.split('-').map(Number);
+  const d = new Date(y, m, 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function esc(s){ return (s===undefined||s===null)?'':String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function defaultHolidays(){
+  const raw = [
+    ['2026-02-04','শবে বরাত'],['2026-02-21','শহীদ দিবস ও আন্তর্জাতিক মাতৃভাষা দিবস'],['2026-03-18','শবে কদর'],
+    ['2026-03-20','জুমাতুল বিদা'],['2026-03-20','ঈদুল ফিতর (ছুটি)'],['2026-03-21','ঈদুল ফিতর'],['2026-03-22','ঈদুল ফিতর (ছুটি)'],
+    ['2026-03-23','ঈদুল ফিতর (ছুটি)'],['2026-03-26','স্বাধীনতা ও জাতীয় দিবস'],['2026-04-14','বাংলা নববর্ষ'],
+    ['2026-05-01','মে দিবস'],['2026-05-01','বুদ্ধ পূর্ণিমা (বৈশাখী পূর্ণিমা)'],['2026-05-25','ঈদুল আজহার ছুটি'],
+    ['2026-05-26','ঈদুল আজহার ছুটি'],['2026-05-27','ঈদুল আজহার ছুটি'],['2026-05-28','ঈদুল আজহা'],
+    ['2026-05-29','ঈদুল আজহার ছুটি'],['2026-05-30','ঈদুল আজহার ছুটি'],['2026-06-26','আশুরা'],
+    ['2026-08-05','জুলাই অভ্যুত্থান দিবস'],['2026-08-26','ঈদে মিলাদুন্নবী (সা.)'],['2026-09-04','শুভ জন্মাষ্টমী'],
+    ['2026-10-20','দুর্গাপূজা (মহানবমী)'],['2026-10-21','দুর্গাপূজা (বিজয়া দশমী)'],['2026-12-16','বিজয় দিবস'],['2026-12-25','বড়দিন'],
+    ['2027-01-24','শবে বরাত'],['2027-02-21','শহীদ দিবস ও আন্তর্জাতিক মাতৃভাষা দিবস'],['2027-03-05','জুমাতুল বিদা'],
+    ['2027-03-06','শবে কদর'],['2027-03-09','ঈদুল ফিতর'],['2027-03-10','ঈদুল ফিতর (ছুটি)'],['2027-03-11','ঈদুল ফিতর (ছুটি)'],
+    ['2027-03-26','স্বাধীনতা ও জাতীয় দিবস'],['2027-04-14','বাংলা নববর্ষ'],['2027-05-01','মে দিবস'],
+    ['2027-05-16','ঈদুল আজহা'],['2027-05-17','ঈদুল আজহার ছুটি'],['2027-05-18','ঈদুল আজহার ছুটি'],
+    ['2027-05-20','বুদ্ধ পূর্ণিমা'],['2027-06-15','আশুরা'],['2027-08-15','ঈদে মিলাদুন্নবী (সা.)'],
+    ['2027-08-24','শুভ জন্মাষ্টমী'],['2027-10-10','বিজয়া দশমী'],['2027-12-16','বিজয় দিবস'],['2027-12-25','বড়দিন'],
+  ];
+  return raw.map(([date,name],i)=>({id:'h'+(i+1), date, name}));
+}
+
+function defaultCenterRows(){
+  const raw = [
+    ['৩৬০','কলাগাছিয়া','হোগলাকান্দি',1,147,'ক/১','সফিকুল বারী','IPC',''],
+    ['৩৬০','কলাগাছিয়া','হোগলাকান্দি',148,247,'ক/১','সফিকুল বারী','IPC','A'],
+    ['৩৬০','মোল্লারচর','বড় মোল্লারচর',245,440,'খ/১','তোফাজ্জল হোসেন','IPC',''],
+    ['৩৬০','মোল্লারচর','বড় মোল্লারচর',241,591,'খ/১','তোফাজ্জল হোসেন','IPC','A'],
+    ['৩৫৮','কলাগাছিয়া','নগর ডৌকাদি',1,250,'গ/১','আঃ কাসেম মোল্লা','IPC',''],
+    ['৩৫৮','কলাগাছিয়া','নগর ডৌকাদি',251,475,'গ/১','আঃ কাসেম মোল্লা','IPC','A'],
+    ['৩৩০','লক্ষ্মীবাড়ি','লক্ষ্মীবাড়ি',1,150,'ঘ/১','মোস্তফা ভূঁইয়া','IPC',''],
+    ['৩৩০','লক্ষ্মীবাড়ি','লক্ষ্মীবাড়ি',151,257,'ঘ/১','মোস্তফা ভূঁইয়া','IPC','A'],
+    ['৩৬০','মোল্লারচর','ছোট মোল্লারচর',1,144,'ক/২','আঃ রহিম (ঢাকাইয়া বাড়ী)','IPC',''],
+    ['৩৬০','মোল্লারচর','ছোট মোল্লারচর',781,910,'ক/২','আঃ রহিম (ঢাকাইয়া বাড়ী)','IPC','A'],
+    ['৩৩১','কলাগাছিয়া','উত্তর কলাগাছিয়া',278,477,'খ/২','স্বাস্থ্য ও পঃ পঃ কেন্দ্র','IPC',''],
+    ['৩৩১','কলাগাছিয়া','উত্তর কলাগাছিয়া',478,685,'খ/২','স্বাস্থ্য ও পঃ পঃ কেন্দ্র','IPC','A'],
+    ['৩৩১','কলাগাছিয়া','ভিটি কলাগাছিয়া',1,175,'গ/২','আনোয়ারুল ইসলাম','IPC',''],
+    ['৩৩১','কলাগাছিয়া','ভিটি কলাগাছিয়া',176,276,'গ/২','আনোয়ারুল ইসলাম','IPC','A'],
+    ['৩৩০','লক্ষ্মীবাড়ি','লক্ষ্মীবাড়ি',260,359,'ঘ/২','আঃ বারেক ভূঁইয়া','IPC',''],
+    ['৩৩০','লক্ষ্মীবাড়ি','লক্ষ্মীবাড়ি',360,463,'ঘ/২','আঃ বারেক ভূঁইয়া','IPC','A'],
+    ['৩৩১','কলাগাছিয়া','হোগলাকান্দি',681,918,'ক/১','সফিকুল বারী','EPI',''],
+    ['৩৬০','মোল্লারচর','বড় মোল্লারচর',248,591,'খ/১','তোফাজ্জল হোসেন','EPI',''],
+    ['৩৫৮','নগর ডৌকাদি','নগর ডৌকাদি',1,475,'গ/১','আঃ কাসেম মোল্লা','EPI',''],
+    ['৩৩০','লক্ষ্মীবাড়ি','লক্ষ্মীবাড়ি',1,259,'ঘ/১','মোস্তফা ভূঁইয়া','EPI',''],
+    ['৩৬০','মোল্লারচর','ছোট মোল্লারচর',1,247,'ক/২','আঃ রহিম (ঢাকাইয়া বাড়ী)','EPI',''],
+    ['৩৩১','কলাগাছিয়া','উত্তর কলাগাছিয়া',278,685,'খ/২','স্বাস্থ্য ও পঃ পঃ কেন্দ্র','EPI',''],
+    ['৩৩১','কলাগাছিয়া','ভিটি কলাগাছিয়া',1,277,'গ/২','আনোয়ারুল ইসলাম','EPI',''],
+    ['৩৩০','লক্ষ্মীবাড়ি','লক্ষ্মীবাড়ি',258,460,'ঘ/২','আঃ বারেক ভূঁইয়া','EPI',''],
+  ];
+  return raw.map(([mouzaNo,mouzaName,villageName,houseFrom,houseTo,blockNo,ownerName,purpose,note],i)=>(
+    {id:'c'+(i+1), mouzaNo, mouzaName, villageName, houseFrom, houseTo, newC:0, cancelC:0, blockNo, ownerName, purpose, note}
+  ));
+}
+
+const DATA_VERSION = 5;
+
+function defaultState(){
+  return {
+    version: DATA_VERSION,
+    worker:{
+      name:'মোঃ শিমুল মিয়া', designation:'স্বাস্থ্য সহকারী', mobile:'০১৮২১২৯৯৯৯৩',
+      upazila:'আড়াইহাজার', district:'নারায়ণগঞ্জ', union:'সদাসদী', wardNo:'০১', signatureImage:null
+    },
+    centerRows: defaultCenterRows(),
+    holidays: defaultHolidays(),
+    entries:{},
+    submitted:{},
+    currentMonth: isoDate(new Date()).slice(0,7),
+    nextRowId: 25,
+    nextHolidayId: 49,
+    notifications:{ callmebotApiKey:'', notifyPhone:'8801821299993', appLink:'' }
+  };
+}
+
+function parseRange(s){
+  const m = String(s||'').match(/(\d+)\s*-\s*(\d+)/);
+  if(!m) return {from:0,to:0};
+  return {from:parseInt(m[1]), to:parseInt(m[2])};
+}
+
+function migrateState(state){
+  if(!state.notifications){
+    state.notifications = { callmebotApiKey:'', notifyPhone:'8801821299993', appLink:'' };
+  }
+  if(state.version === DATA_VERSION) return state;
+  if(!state.worker) state.worker = defaultState().worker;
+  if(!state.worker.union) state.worker.union = 'সদাসদী';
+
+  if(!state.centerRows){
+    if(state.blocks && state.blocks.length){
+      let rows = []; let id=1;
+      state.blocks.forEach(b=>{
+        const r1=parseRange(b.ipc1), r2=parseRange(b.ipc2), r3=parseRange(b.epi);
+        rows.push({id:'c'+(id++), mouzaNo:b.mouzaNo, mouzaName:b.mouzaName, villageName:b.villageName, houseFrom:r1.from, houseTo:r1.to, newC:0, cancelC:0, blockNo:b.code, ownerName:b.ownerName, purpose:'IPC', note:''});
+        rows.push({id:'c'+(id++), mouzaNo:b.mouzaNo, mouzaName:b.mouzaName, villageName:b.villageName, houseFrom:r2.from, houseTo:r2.to, newC:0, cancelC:0, blockNo:b.code, ownerName:b.ownerName, purpose:'IPC', note:'A'});
+        rows.push({id:'c'+(id++), mouzaNo:b.mouzaNo, mouzaName:b.mouzaName, villageName:b.villageName, houseFrom:r3.from, houseTo:r3.to, newC:0, cancelC:0, blockNo:b.code, ownerName:b.ownerName, purpose:'EPI', note:''});
+      });
+      state.centerRows = rows;
+      state.nextRowId = id;
+      delete state.blocks;
+    } else {
+      state.centerRows = defaultCenterRows();
+      state.nextRowId = 25;
+    }
+  }
+  if(!state.holidays){
+    state.holidays = defaultHolidays();
+    state.nextHolidayId = 49;
+  }
+  if(state.auth){
+    delete state.auth;
+  }
+  if(!state.currentMonth){
+    state.currentMonth = isoDate(new Date()).slice(0,7);
+  }
+  if(state.nextRowId===undefined) state.nextRowId = (state.centerRows.length||24)+1;
+  if(state.nextHolidayId===undefined) state.nextHolidayId = (state.holidays.length||48)+1;
+  state.version = DATA_VERSION;
+  return state;
+}
+
+let STATE = null;
+let ACTIVE_TAB = 'entry';
+let VIEWING_FROM_HISTORY = false;
+let AUTHENTICATED = false;
+let CURRENT_ROLE = null;
+let AUTH_CHECKED = false;
+let CURRENT_MONTH = isoDate(new Date()).slice(0,7);
+
+const OFFICE_EMAIL = 'office@monthly-report-app-1866a.firebaseapp.com';
+const ROLE_ACCOUNTS = {
+  admin:  { email:'iqbal.hossain3034@gmail.com', label:'Iqbal' },
+  user:   { email:'shimul.mai1722@gmail.com',      label:'Shimul' },
+  viewer: { email:OFFICE_EMAIL,                   label:'Office (শুধু দেখা)' }
+};
+const USERNAME_TO_EMAIL = {
+  iqbal:  ROLE_ACCOUNTS.admin.email,
+  shimul: ROLE_ACCOUNTS.user.email,
+  office: ROLE_ACCOUNTS.viewer.email
+};
+function resolveLoginEmail(input){
+  const v = (input||'').trim().toLowerCase();
+  if(USERNAME_TO_EMAIL[v]) return USERNAME_TO_EMAIL[v];
+  return input.trim();
+}
+function roleForEmail(email){
+  if(!email) return null;
+  const e = email.toLowerCase();
+  if(e === ROLE_ACCOUNTS.admin.email.toLowerCase()) return 'admin';
+  if(e === ROLE_ACCOUNTS.user.email.toLowerCase()) return 'user';
+  if(e === ROLE_ACCOUNTS.viewer.email.toLowerCase()) return 'viewer';
+  return null;
+}
+
+/* ================= থিম সিস্টেম =================
+   ৫টা থিম — <html> ট্যাগে data-theme অ্যাট্রিবিউট বসিয়ে CSS-এর [data-theme] রুল (উপরে <style>-এ
+   সংজ্ঞায়িত) সক্রিয় করা হয়। localStorage-এ browser-ভিত্তিক সংরক্ষিত থাকে (Firebase-এ নয়) — এটা
+   প্রতিটা ডিভাইসের নিজস্ব প্রদর্শন-পছন্দ, রিপোর্টের ডেটা নয়, তাই ডিভাইস ভেদে আলাদা থিম রাখা যাবে। */
+const THEMES = [
+  {id:'classic',  label:'⭐ ক্লাসিক (বর্তমান)'},
+  {id:'ocean',    label:'🔵 ওশেন ব্লু'},
+  {id:'purple',   label:'🟣 রয়্যাল পার্পল'},
+  {id:'green',    label:'🟢 ফ্রেশ গ্রিন'},
+  {id:'gradient', label:'🌈 ব্লু-পার্পল গ্র্যাডিয়েন্ট'}
+];
+const THEME_STORAGE_KEY = 'mr_theme_v1';
+function getCurrentTheme(){
+  try{ return localStorage.getItem(THEME_STORAGE_KEY) || 'classic'; }catch(e){ return 'classic'; }
+}
+function applyTheme(id){
+  if(!id || id==='classic') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', id);
+}
+function setTheme(id){
+  try{ localStorage.setItem(THEME_STORAGE_KEY, id); }catch(e){ console.error('theme save failed', e); }
+  applyTheme(id);
+}
+function themeSwitcherHTML(){
+  const current = getCurrentTheme();
+  return `<div class="theme-switcher no-print">
+    <select onchange="setTheme(this.value)" aria-label="থিম নির্বাচন করুন">
+      ${THEMES.map(t=>`<option value="${t.id}" ${current===t.id?'selected':''}>${t.label}</option>`).join('')}
+    </select>
+  </div>`;
+}
+applyTheme(getCurrentTheme()); // পেজ লোড হওয়ার সাথে সাথেই আগের পছন্দের থিম প্রয়োগ হয়ে যায় (Login পেজেও)
+
+const STORAGE_KEY = 'mr_state_v1';
+async function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return migrateState(JSON.parse(raw));
+  }catch(e){ console.error('load failed', e); }
+  return defaultState();
+}
+let LAST_SAVE_ERROR = null;
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDI1zX3hDRTRbs8Hls7OxP6U0_Le_IEbQw",
+  authDomain: "monthly-report-app-1866a.firebaseapp.com",
+  projectId: "monthly-report-app-1866a",
+  storageBucket: "monthly-report-app-1866a.firebasestorage.app",
+  messagingSenderId: "703092180506",
+  appId: "1:703092180506:web:d0b07485e77aff1752b3a3",
+  measurementId: "G-FZDFY172R4"
+};
+let fbDb = null, fbDocRef = null, fbReady = false;
+let LAST_PUSHED_JSON = null;
+let fbSyncTimer = null;
+let FIREBASE_STATUS = 'connecting';
+
+function initFirebase(){
+  if(!(window.firebase && firebase.initializeApp)){
+    setTimeout(initFirebase, 400);
+    return;
+  }
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(e=>console.error('persistence set failed', e));
+    fbDb = firebase.firestore();
+    fbDocRef = fbDb.collection('app_data').doc('shared_state');
+    fbReady = true;
+    let listening = false;
+    firebase.auth().onAuthStateChanged((user)=>{
+      AUTH_CHECKED = true;
+      if(user){
+        const role = roleForEmail(user.email);
+        if(role){
+          AUTHENTICATED = true;
+          CURRENT_ROLE = role;
+          if(role==='viewer' && ACTIVE_TAB==='entry') ACTIVE_TAB = 'history';
+          if(!listening){ listening = true; listenFirebase(); }
+        } else {
+          AUTHENTICATED = false; CURRENT_ROLE = null;
+          firebase.auth().signOut();
+        }
+      } else {
+        AUTHENTICATED = false; CURRENT_ROLE = null;
+      }
+      render();
+    });
+  }catch(e){
+    console.error('firebase init failed', e);
+    FIREBASE_STATUS = 'offline';
+  }
+}
+
+function listenFirebase(){
+  if(!fbReady) return;
+  fbDocRef.onSnapshot((doc)=>{
+    FIREBASE_STATUS = 'online';
+    if(doc.exists && doc.data() && doc.data().json){
+      const incoming = doc.data().json;
+      if(incoming === LAST_PUSHED_JSON) return;
+      try{
+        STATE = migrateState(JSON.parse(incoming));
+        localStorage.setItem(STORAGE_KEY, incoming);
+        render();
+      }catch(e){ console.error('snapshot parse failed', e); }
+    } else {
+      const hasRealData = STATE && STATE.entries && Object.keys(STATE.entries).length > 0;
+      if(hasRealData) pushToFirebase();
+    }
+  }, (err)=>{
+    console.error('firestore listen failed', err);
+    FIREBASE_STATUS = 'offline';
+  });
+}
+
+function scheduleFirebaseSync(){
+  if(!fbReady){ setTimeout(scheduleFirebaseSync, 400); return; }
+  clearTimeout(fbSyncTimer);
+  fbSyncTimer = setTimeout(pushToFirebase, 500);
+}
+
+async function pushToFirebase(){
+  if(!fbReady) return;
+  const json = JSON.stringify(STATE);
+  try{
+    LAST_PUSHED_JSON = json;
+    await fbDocRef.set({
+      json,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    FIREBASE_STATUS = 'online';
+  }catch(e){
+    console.error('firebase push failed', e);
+    FIREBASE_STATUS = 'offline';
+  }
+}
+
+async function saveState(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
+    LAST_SAVE_ERROR = null;
+    scheduleFirebaseSync();
+    return true;
+  }catch(e){
+    console.error('save failed', e);
+    if(e && e.name==='QuotaExceededError'){
+      LAST_SAVE_ERROR = 'ব্রাউজারের সংরক্ষণ জায়গা পূর্ণ হয়ে গেছে (QuotaExceededError) — পুরনো ব্যাকআপ ডাউনলোড করে কিছু ডেটা মুছে ফেলুন';
+    } else {
+      LAST_SAVE_ERROR = (e && e.message) ? e.message : 'অজানা ত্রুটি';
+    }
+    return false;
+  }
+}
+function toast(msg, ms){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove('show'), ms||2200);
+}
+function holidayMap(){
+  const m = {};
+  STATE.holidays.forEach(h=>{ if(h.date && !m[h.date]) m[h.date]=h.name; });
+  return m;
+}
+function remarksFullyFilled(ym){
+  const entry = getMonthEntry(ym);
+  const hMap = holidayMap();
+  for(const row of entry.rows){
+    const d = new Date(row.date+'T00:00:00');
+    const isFriday = d.getDay()===5;
+    const holiday = hMap[row.date];
+    if((isFriday || holiday) && !row.remark) return false;
+  }
+  return true;
+}
+
+function centerLabel(r){
+  return `${r.blockNo||''}${r.note?(' '+r.note):''} ${r.purpose||''}`.replace(/\s+/g,' ').trim();
+}
+function categoryList(){
   const set = new Set();
-  STATE.holidays.forEach(h=>{ if(h.date) set.add(h.date.slice(0,4)); });
-  return [...set].sort();
+  STATE.centerRows.forEach(r=>{ if(r.purpose) set.add(r.purpose); });
+  set.add('IPC'); set.add('EPI');
+  const list = [...set].filter(p=>p!=='সি সি সেবা').sort((a,b)=> (a==='IPC'?-2:a==='EPI'?-1:0) - (b==='IPC'?-2:b==='EPI'?-1:0) || a.localeCompare(b));
+  list.push('সি সি সেবা');
+  return list;
 }
-function currentHolidayYear(){
-  if(HOLIDAY_YEAR) return HOLIDAY_YEAR;
-  const cy = String(new Date().getFullYear());
-  return holidayYears().includes(cy) ? cy : 'all';
+function optionsForCategory(cat){
+  if(cat==='সি সি সেবা') return ['সি সি সেবা','----'];
+  const opts = STATE.centerRows.filter(r=>r.purpose===cat).map(centerLabel);
+  opts.push('----');
+  return opts;
 }
-function setHolidayYear(v){ HOLIDAY_YEAR = v; renderTab(); }
+function lookupByCode(code){
+  if(!code || code==='----' || code==='সি সি সেবা') return null;
+  const row = STATE.centerRows.find(r=>centerLabel(r)===code);
+  if(!row) return null;
+  const total = (Number(row.houseTo||0)-Number(row.houseFrom||0)+1) + Number(row.newC||0) - Number(row.cancelC||0);
+  return {row, total};
+}
 
-function focusHolidayRow(id, field){
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    const row = document.getElementById('holiday-row-'+id);
-    const inp = document.getElementById('holiday-'+id+'-'+field);
-    if(row) row.scrollIntoView({block:'center', behavior:'smooth'});
-    if(inp) inp.focus({preventScroll:true});
-    setTimeout(()=>{
-      if(HOLIDAY_HL_ID===id) HOLIDAY_HL_ID = null;
-      const r = document.getElementById('holiday-row-'+id);
-      if(r) r.classList.remove('hl-row');
-    }, 3500);
-  }));
+function buildMonthRows(ym, category){
+  const [y,m] = ym.split('-').map(Number);
+  const n = daysInMonth(y, m-1);
+  const rows = [];
+  for(let d=1; d<=n; d++){
+    const iso = isoDate(new Date(y, m-1, d));
+    rows.push({date:iso, code:'', remark:''});
+  }
+  return {category: category||'IPC', rows};
+}
+function getMonthEntry(ym){
+  if(!STATE.entries[ym]) STATE.entries[ym] = buildMonthRows(ym, 'IPC');
+  return STATE.entries[ym];
+}
+
+let SHOW_FORGOT = false;
+function renderLogin(err){
+  const app = document.getElementById('app');
+  if(!AUTH_CHECKED){
+    app.innerHTML = `
+      <div class="letterhead">
+        <div class="seal">উ.স্বা</div>
+        <div>
+          <h1>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার — উপজেলা স্বাস্থ্য ও পরিবার পরিকল্পনা কর্মকর্তার কার্যালয়</h1>
+          <p>মাঠকর্মীদের মাসিক অগ্রিম কর্মসূচি (ওয়েব সংস্করণ)</p>
+        </div>
+      </div>
+      <div class="card" style="max-width:380px;margin:40px auto 0;text-align:center;color:var(--green-deep);">লোড হচ্ছে…</div>`;
+    return;
+  }
+  app.innerHTML = `
+    <div class="letterhead">
+      <div class="seal">উ.স্বা</div>
+      <div>
+        <h1>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার — উপজেলা স্বাস্থ্য ও পরিবার পরিকল্পনা কর্মকর্তার কার্যালয়</h1>
+        <p>মাঠকর্মীদের মাসিক অগ্রিম কর্মসূচি (ওয়েব সংস্করণ)</p>
+      </div>
+    </div>
+    ${SHOW_FORGOT ? forgotPasswordHTML(err) : loginFormHTML(err)}`;
+  const el = document.getElementById('loginEmail') || document.getElementById('recoveryEmail');
+  if(el) el.focus();
+}
+function loginFormHTML(err){
+  return `
+    <div class="card" style="max-width:380px;margin:40px auto 0;">
+      <h2 style="text-align:center;">লগইন করুন</h2>
+      ${err?`<div style="background:var(--red-soft);color:var(--red);padding:8px 12px;border-radius:8px;font-size:12.5px;margin-bottom:12px;text-align:center;">${esc(err)}</div>`:''}
+      <div class="field"><label>ইউজারনেম</label><input type="text" id="loginEmail" placeholder="iqbal / shimul / office" autocomplete="username"></div>
+      <div class="field">
+        <label>পাসওয়ার্ড</label>
+        <div style="display:flex;gap:6px;">
+          <input type="password" id="loginPass" autocomplete="current-password" style="flex:1;" onkeydown="if(event.key==='Enter')doLogin()">
+          <button type="button" class="btn btn-outline btn-sm" onclick="togglePassVisibility()">👁</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="loginBtn" style="width:100%;margin-top:6px;" onclick="doLogin()">প্রবেশ করুন</button>
+      <p class="hint" style="text-align:center;margin-top:12px;cursor:pointer;color:var(--green-mid);font-weight:600;" onclick="SHOW_FORGOT=true; renderLogin();">পাসওয়ার্ড ভুলে গেছেন?</p>
+    </div>`;
+}
+function togglePassVisibility(){
+  const el = document.getElementById('loginPass');
+  el.type = el.type==='password' ? 'text' : 'password';
+}
+function forgotPasswordHTML(err, sent){
+  return `
+    <div class="card" style="max-width:400px;margin:40px auto 0;">
+      <h2 style="text-align:center;">পাসওয়ার্ড রিসেট করুন</h2>
+      <p class="hint" style="margin-top:-6px;">ইউজারনেম (iqbal/shimul) দিন — নিবন্ধিত ইমেইলে একটা পাসওয়ার্ড রিসেট লিংক পাঠানো হবে। (⚠ "office" অ্যাকাউন্টের কোনো আসল ইমেইল নেই বলে এই পদ্ধতিতে রিসেট করা যাবে না — সেটার পাসওয়ার্ড বদলাতে হলে এডমিনকে Firebase Console থেকে সরাসরি বদলাতে হবে)</p>
+      ${sent?`<div style="background:var(--green-soft);color:var(--green-deep);padding:8px 12px;border-radius:8px;font-size:12.5px;margin-bottom:8px;text-align:center;">রিসেট লিংক পাঠানো হয়েছে — ইমেইল চেক করুন (স্প্যাম ফোল্ডারও দেখুন)</div>`:''}
+      ${err?`<div style="background:var(--red-soft);color:var(--red);padding:8px 12px;border-radius:8px;font-size:12.5px;margin-bottom:8px;text-align:center;">${esc(err)}</div>`:''}
+      <div class="field"><label>ইউজারনেম</label><input type="text" id="recoveryEmail" placeholder="iqbal / shimul"></div>
+      <button class="btn btn-primary" style="width:100%;" onclick="doPasswordReset()">রিসেট লিংক পাঠান</button>
+      <p class="hint" style="text-align:center;margin-top:12px;cursor:pointer;color:var(--green-mid);font-weight:600;" onclick="SHOW_FORGOT=false; renderLogin();">← লগইনে ফিরে যান</p>
+    </div>`;
+}
+async function doPasswordReset(){
+  const email = resolveLoginEmail(document.getElementById('recoveryEmail').value);
+  if(!email){ renderLogin('ইউজারনেম দিন'); return; }
+  try{
+    await firebase.auth().sendPasswordResetEmail(email);
+    SHOW_FORGOT = true;
+    document.getElementById('app').innerHTML = `
+      <div class="letterhead">
+        <div class="seal">উ.স্বা</div>
+        <div><h1>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার — উপজেলা স্বাস্থ্য ও পরিবার পরিকল্পনা কর্মকর্তার কার্যালয়</h1><p>মাঠকর্মীদের মাসিক অগ্রিম কর্মসূচি (ওয়েব সংস্করণ)</p></div>
+      </div>${forgotPasswordHTML(null, true)}`;
+  }catch(e){
+    console.error(e);
+    renderLogin('ইমেইল পাঠাতে সমস্যা হয়েছে — ইমেইলটি সঠিক কিনা দেখুন');
+  }
+}
+async function doLogin(){
+  const email = resolveLoginEmail(document.getElementById('loginEmail').value);
+  const pass = document.getElementById('loginPass').value;
+  const btn = document.getElementById('loginBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'যাচাই করা হচ্ছে…'; }
+  try{
+    await firebase.auth().signInWithEmailAndPassword(email, pass);
+  }catch(e){
+    console.error(e);
+    renderLogin('ইউজারনেম বা পাসওয়ার্ড সঠিক নয়');
+  }
+}
+function doLogout(){ firebase.auth().signOut(); }
+
+function render(){
+  if(!AUTHENTICATED){ renderLogin(); return; }
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="letterhead">
+      <div class="seal">উ.স্বা</div>
+      <div>
+        <h1>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার — উপজেলা স্বাস্থ্য ও পরিবার পরিকল্পনা কর্মকর্তার কার্যালয়</h1>
+        <p>${esc(STATE.worker.upazila)}, ${esc(STATE.worker.district)} &nbsp;•&nbsp; মাঠকর্মীদের মাসিক অগ্রিম কর্মসূচি (ওয়েব সংস্করণ)</p>
+      </div>
+    </div>
+    <div class="tabs no-print">
+      ${CURRENT_ROLE!=='viewer' ? tabBtn('entry','মাসিক রিপোর্ট') : ''}
+      ${CURRENT_ROLE!=='viewer' ? tabBtn('setup','কর্মী ও কেন্দ্র তালিকা') : ''}
+      ${CURRENT_ROLE!=='viewer' ? tabBtn('holidays','ছুটির তালিকা') : ''}
+      ${tabBtn('history','ইতিহাস ও সার্চ')}
+      ${CURRENT_ROLE!=='viewer' ? tabBtn('dashboard','ড্যাশবোর্ড') : ''}
+      <span class="tab-btn" style="margin-left:auto;background:var(--gold-soft);color:var(--gold);border-color:var(--gold);cursor:default;">
+        ${CURRENT_ROLE==='admin'?'👑 এডমিন':(CURRENT_ROLE==='user'?'👤 ইউজার':'👁 শুধু দেখা')}: ${esc(ROLE_ACCOUNTS[CURRENT_ROLE].label)}
+      </span>
+      ${themeSwitcherHTML()}
+      <button class="tab-btn" style="color:var(--red);" onclick="doLogout()">🔒 লগআউট</button>
+    </div>
+    <div id="tab-content"></div>
+    <div class="footer-note">ডেটা ক্লাউডে (Firebase) সংরক্ষিত হয় — যেকোনো ডিভাইস থেকে লগইন করলেই সর্বশেষ তথ্য দেখা যাবে।</div>
+  `;
+  renderTab();
+}
+function isTabActive(id){
+  if(ACTIVE_TAB==='entry' && VIEWING_FROM_HISTORY) return id==='history';
+  return ACTIVE_TAB===id;
+}
+function tabBtn(id,label){ return `<button class="tab-btn ${isTabActive(id)?'active':''}" onclick="setTab('${id}')">${label}</button>`; }
+function setTab(id){
+  ACTIVE_TAB=id;
+  if(id==='entry'){ CURRENT_MONTH = STATE.currentMonth || CURRENT_MONTH; VIEWING_FROM_HISTORY = false; }
+  render();
+}
+function renderTab(){
+  if(CURRENT_ROLE==='viewer' && (ACTIVE_TAB==='setup' || ACTIVE_TAB==='holidays' || ACTIVE_TAB==='dashboard')) ACTIVE_TAB = 'history';
+  const c = document.getElementById('tab-content');
+  if(ACTIVE_TAB==='entry') c.innerHTML = entryTabHTML();
+  else if(ACTIVE_TAB==='setup') c.innerHTML = setupTabHTML();
+  else if(ACTIVE_TAB==='holidays') c.innerHTML = holidaysTabHTML();
+  else if(ACTIVE_TAB==='dashboard') c.innerHTML = dashboardTabHTML();
+  else c.innerHTML = historyTabHTML();
+  requestAnimationFrame(()=>requestAnimationFrame(fitReportTable));
+}
+function fitReportTable(){
+  const wrap = document.getElementById('reportTableWrap');
+  const table = document.getElementById('reportTableScale');
+  if(!wrap || !table) return;
+  table.style.zoom = '1';
+  const naturalWidth = table.scrollWidth;
+  const availWidth = wrap.clientWidth;
+  if(availWidth > 0 && naturalWidth > availWidth + 0.5){
+    const scale = availWidth / naturalWidth;
+    table.style.zoom = String(scale);
+  } else {
+    table.style.zoom = '1';
+  }
+}
+let _fitReportResizeTimer = null;
+window.addEventListener('resize', function(){
+  clearTimeout(_fitReportResizeTimer);
+  _fitReportResizeTimer = setTimeout(fitReportTable, 120);
+});
+if(window.document && document.fonts && document.fonts.ready){
+  document.fonts.ready.then(()=>fitReportTable()).catch(()=>{});
+}
+
+function entryTabHTML(){
+  const entry = getMonthEntry(CURRENT_MONTH);
+  const [y,m] = CURRENT_MONTH.split('-').map(Number);
+  const monthLabel = BN_MONTHS[m-1] + ' ' + bnNum(y);
+  const isSubmitted = !!STATE.submitted[CURRENT_MONTH];
+  const isViewer = CURRENT_ROLE==='viewer';
+  const remarksDone = remarksFullyFilled(CURRENT_MONTH);
+  const w = STATE.worker;
+  const hMap = holidayMap();
+  const dash = '<span class="muted">----</span>';
+
+  const rowsHTML = entry.rows.map((row,idx)=>{
+    const d = new Date(row.date+'T00:00:00');
+    const dayName = BN_DAYS[d.getDay()];
+    const isFriday = d.getDay()===5;
+    const holiday = hMap[row.date];
+    const info = lookupByCode(row.code);
+    const offRow = isFriday || row.code==='----' || holiday;
+    const isActive = entry.activeIdx===idx;
+    return `
+    <tr class="${offRow?'off-day':''} ${isActive?'active-row':''}">
+      <td>${bnNum(d.getDate())}-${bnNum(m)}-${bnNum(y)}</td>
+      <td>${dayName}</td>
+      <td class="mobile-hide">${info?esc(info.row.mouzaNo):dash}</td>
+      <td class="mobile-hide">${info?(esc(info.row.mouzaName)||'<span class="muted">?</span>'):dash}</td>
+      <td class="mobile-hide">${info?esc(w.union):dash}</td>
+      <td class="mobile-hide">${info?esc(w.wardNo):dash}</td>
+      <td class="village-col mobile-hide">${info?(esc(info.row.villageName)||'<span class="muted">?</span>'):dash}</td>
+      <td class="mobile-hide">${info?`${bnNum(info.row.houseFrom)}-${bnNum(info.row.houseTo)}`:dash}</td>
+      <td class="mobile-hide">${info?bnNum(info.row.newC||0):dash}</td>
+      <td class="mobile-hide">${info?bnNum(info.row.cancelC||0):dash}</td>
+      <td class="mobile-hide">${info?bnNum(info.total):dash}</td>
+      <td class="block-col">${info?esc(info.row.blockNo):(row.code==='সি সি সেবা'?'—':dash)}</td>
+      <td class="owner-col">${info?(esc(info.row.ownerName)||'<span class="muted">?</span>'):(row.code==='সি সি সেবা'?'সি সি সেবা কেন্দ্র':dash)}</td>
+      <td>${info?esc(info.row.purpose):(row.code==='সি সি সেবা'?'সি সি সেবা':dash)}</td>
+      <td class="remark-col"><input type="text" class="no-print" id="row-remark-${idx}" value="${esc(row.remark)}" placeholder="—" oninput="updateRow(${idx},'remark',this.value)"><span class="print-only">${row.remark?esc(row.remark):'—'}</span></td>
+      <td class="no-print select-col">
+        <button type="button" class="picker-btn picker-desktop" id="row-select-${idx}" onclick="openCodePicker(${idx})">${row.code ? esc(row.code) : '<span class="muted">--নির্বাচন--</span>'}</button>
+        <select class="picker-mobile" id="row-select-mobile-${idx}" onchange="handleCodeChange(${idx},this.value)">
+          <option value="">--নির্বাচন--</option>
+          ${getRowOptionsFor(entry, row).map(o=>`<option value="${esc(o)}" ${row.code===o?'selected':''}>${esc(o)}</option>`).join('')}
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const catOpts = categoryList();
+
+  return `
+  ${isViewer ? `
+  <div class="card no-print">
+    <div class="top-bar">
+      <h2 style="border:none;margin:0;">দৈনিক ভ্রমণ তালিকা — ${monthLabel} <span class="hint">(শুধু দেখার জন্য)</span></h2>
+      <div>${isSubmitted?'<span class="badge ok">এই মাস জমা দেওয়া হয়েছে</span>':'<span class="badge pending">এখনো জমা হয়নি</span>'}</div>
+    </div>
+    <div class="row-actions" style="margin-top:0;">
+      <button class="btn btn-outline" onclick="setTab('history')">← ইতিহাসে ফিরে যান</button>
+      <button class="btn btn-outline" onclick="printReport()">🖨 প্রিন্ট</button>
+      <button class="btn btn-outline" onclick="downloadPDFViaImage()">📥 PDF ডাউনলোড করুন</button>
+    </div>
+  </div>` : `
+  <div class="card no-print">
+    <div class="top-bar">
+      <h2 style="border:none;margin:0;">দৈনিক ভ্রমণ তালিকা — ${monthLabel}</h2>
+      <div>${isSubmitted?'<span class="badge ok">এই মাস জমা দেওয়া হয়েছে</span>':'<span class="badge pending">এখনো জমা হয়নি</span>'}</div>
+    </div>
+    <div class="grid" style="margin-bottom:14px;">
+      <div class="field">
+        <label>মাস নির্বাচন করুন</label>
+        <input type="month" value="${CURRENT_MONTH}" onchange="changeMonth(this.value)">
+      </div>
+      <div class="field">
+        <label>ভ্রমণের ধরন (Fill Type)</label>
+        <select onchange="changeCategory(this.value)">
+          ${catOpts.map(c=>`<option value="${esc(c)}" ${entry.category===c?'selected':''}>${esc(c)}</option>`).join('')}
+        </select>
+        <div class="hint">এই সিলেকশন অনুযায়ী নিচের প্রতিটি সারির ড্রপডাউন তালিকা বদলে যাবে (Center details ট্যাবের সাথে সংযুক্ত)</div>
+      </div>
+    </div>
+    <div class="row-actions" style="margin-top:0;">
+      <button class="btn ${remarksDone?'btn-success':'btn-gold'}" onclick="fillRemarks()">${remarksDone?'✅ Fill Remark (ছুটি বসানো হয়েছে)':'🗓 Fill Remark (ছুটির তালিকা থেকে বসান)'}</button>
+      ${isSubmitted?'':'<button class="btn btn-danger" onclick="clearMonth()">🧹 Clear (সব মুছুন)</button>'}
+      <button class="btn btn-outline" onclick="printReport()">🖨 প্রিন্ট</button>
+      <button class="btn btn-outline" id="whatsappShareBtn" onclick="downloadPDFViaImage()">📥 PDF ডাউনলোড করুন (হোয়াটসঅ্যাপের জন্য)</button>
+      ${isSubmitted?'':'<button class="btn btn-primary" onclick="submitMonth()">✅ মাসিক রিপোর্ট জমা দিন</button>'}
+      ${isSubmitted?'<button class="btn btn-danger" onclick="unsubmitMonth()">জমা বাতিল করুন</button>':''}
+    </div>
+    ${LAST_SAVE_ERROR?`
+    <div style="margin-top:12px;padding:10px 14px;border-radius:9px;background:var(--red-soft);border:1px solid var(--red);color:var(--red);font-size:12.5px;">
+      ⚠ শেষবার সংরক্ষণ ব্যর্থ হয়েছে। কারণ: <strong>${esc(LAST_SAVE_ERROR)}</strong><br>
+      আপনার ইন্টারনেট সংযোগ পরীক্ষা করে আবার "✅ মাসিক রিপোর্ট জমা দিন" বাটনে চাপুন। বারবার একই সমস্যা হলে, পেজটা একবার রিফ্রেশ/পুনরায় খুলে চেষ্টা করুন — এতে ডেটা মুছে যাবে না।
+    </div>`:''}
+  </div>`}
+
+  <div class="card report-sheet${isViewer?' viewer-mode':''}" id="reportSheet">
+    <div class="report-head">
+      <div class="report-head-title">
+        গণপ্রজাতন্ত্রী বাংলাদেশ সরকার<br>
+        উপজেলা স্বাস্থ্য ও পঃপঃ কর্মকর্তার কার্যালয়<br>
+        ${esc(w.upazila)}, ${esc(w.district)}।<br>
+        <strong>মাঠ কর্মীদের মাসিক অগ্রিম কর্মসূচি</strong><br>
+        <span class="report-head-month">মাসের নাম: <strong>${monthLabel}</strong></span>
+      </div>
+    </div>
+    <div class="report-worker">
+      <div>
+        <div>কর্মীর নামঃ ${esc(w.name)}</div>
+        <div>পদবি: ${esc(w.designation)}</div>
+        <div>উপজেলা: ${esc(w.upazila)}।</div>
+      </div>
+      <div>
+        <div>ওয়ার্ড নং: ${esc(w.wardNo)}</div>
+        <div>ইউনিয়ন: ${esc(w.union)}</div>
+        <div>জেলা: ${esc(w.district)}।</div>
+      </div>
+    </div>
+    <div class="table-wrap" id="reportTableWrap" style="overflow-x:auto;">
+    <table id="reportTableScale" class="report-table-scale">
+      <colgroup>
+        <col style="width:8.5%">
+        <col style="width:6.5%">
+        <col class="mobile-hide" style="width:4.5%">
+        <col class="mobile-hide" style="width:7.5%">
+        <col class="mobile-hide" style="width:6.5%">
+        <col class="mobile-hide" style="width:5%">
+        <col class="mobile-hide" style="width:8%">
+        <col class="mobile-hide" style="width:8%">
+        <col class="mobile-hide" style="width:4%">
+        <col class="mobile-hide" style="width:4%">
+        <col class="mobile-hide" style="width:4%">
+        <col style="width:5%">
+        <col style="width:12%">
+        <col style="width:4.5%">
+        <col style="width:12%">
+        <col class="no-print" style="width:30%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th rowspan="2">তারিখ</th><th rowspan="2">বার</th><th colspan="2" class="mobile-hide">মৌজা</th>
+          <th rowspan="2" class="mobile-hide">ইউনিয়ন</th><th rowspan="2" class="mobile-hide">ওয়ার্ড নং</th>
+          <th rowspan="2" class="mobile-hide">গ্রামের নাম</th><th colspan="4" class="mobile-hide">পরিদর্শিত বাড়ি</th>
+          <th rowspan="2">ব্লক নং</th><th rowspan="2">টিকাদান কেন্দ্রের<br>মালিকের নাম</th>
+          <th rowspan="2">ভ্রমণের<br>উদ্দেশ্য</th><th rowspan="2">মন্তব্য</th>
+          <th rowspan="2" class="no-print select-col">নিচের ড্রপডাউন থেকে ভ্রমণের উদ্দেশ্য খুঁজে সিলেক্ট করুন</th>
+        </tr>
+        <tr>
+          <th class="mobile-hide">নং</th><th class="mobile-hide">নাম</th>
+          <th class="mobile-hide">হইতে-পর্যন্ত</th><th class="mobile-hide">নতুন</th><th class="mobile-hide">বিলুপ্ত</th><th class="mobile-hide">মোট</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHTML}</tbody>
+    </table>
+    </div>
+    <p class="report-note">বিঃদ্রঃ কর্তৃপক্ষের নির্দেশক্রমে কর্মসূচি পরিবর্তনশীল</p>
+    <div class="report-sign">
+      <div class="sign-row">
+        <span>দাখিলকারীর স্বাক্ষরঃ</span>
+        <span class="sign-blank">${w.signatureImage ? `<img src="${w.signatureImage}" class="signature-img" alt="স্বাক্ষর">` : ''}</span>
+      </div>
+      <div>নাম ও পদবীঃ ${esc(w.name)} ( ${esc(w.designation)} )</div>
+      <div>মোবাইলঃ ${esc(w.mobile)}</div>
+    </div>
+  </div>`;
+}
+function changeMonth(v){ CURRENT_MONTH = v; renderTab(); }
+function changeCategory(v){ getMonthEntry(CURRENT_MONTH).category = v; saveState(); renderTab(); }
+function getRowOptionsFor(entry, row){
+  const opts = optionsForCategory(entry.category);
+  return (row.code && !opts.includes(row.code)) ? [row.code, ...opts] : opts;
+}
+let CODE_PICKER_STATE = null;
+let CODE_PICKER_OPENED_AT = 0;
+function openCodePicker(idx){
+  const entry = getMonthEntry(CURRENT_MONTH);
+  const row = entry.rows[idx];
+  if(!row) return;
+  CODE_PICKER_STATE = {idx, opts: getRowOptionsFor(entry, row)};
+  renderCodePickerModal();
+}
+function closeCodePicker(){
+  CODE_PICKER_STATE = null;
+  document.removeEventListener('keydown', pickerEscHandler);
+  const root = document.getElementById('codePickerRoot');
+  if(root) root.innerHTML = '';
+}
+function handlePickerOverlayClick(e){
+  if(e.target !== e.currentTarget) return;
+  if(Date.now() - CODE_PICKER_OPENED_AT < 350) return;
+  closeCodePicker();
+}
+function pickerEscHandler(e){ if(e.key==='Escape') closeCodePicker(); }
+function renderCodePickerModal(){
+  const root = document.getElementById('codePickerRoot');
+  if(!root || !CODE_PICKER_STATE) return;
+  const entry = getMonthEntry(CURRENT_MONTH);
+  const row = entry.rows[CODE_PICKER_STATE.idx];
+  root.innerHTML = `
+    <div class="picker-overlay" onclick="handlePickerOverlayClick(event)">
+      <div class="picker-modal" role="dialog" aria-modal="true">
+        <div class="picker-modal-head">
+          <strong>ভ্রমণের উদ্দেশ্য নির্বাচন করুন</strong>
+          <button type="button" class="picker-close-btn" onclick="closeCodePicker()">✕</button>
+        </div>
+        <input type="text" id="pickerSearchInput" class="picker-search" placeholder="🔍 খুঁজুন..." oninput="filterCodePicker(this.value)">
+        <div class="picker-list" id="pickerOptionsList" onclick="handlePickerOptionClick(event)">
+          ${renderPickerOptionsHTML(row.code, CODE_PICKER_STATE.opts, '')}
+        </div>
+      </div>
+    </div>`;
+  CODE_PICKER_OPENED_AT = Date.now();
+  document.addEventListener('keydown', pickerEscHandler);
+  const inp = document.getElementById('pickerSearchInput');
+  if(inp) inp.focus();
+}
+function renderPickerOptionsHTML(currentCode, opts, search){
+  const term = (search||'').trim().toLowerCase();
+  const list = ['', ...opts];
+  const filtered = term ? list.filter(o => (o===''?'--নির্বাচন--':o).toLowerCase().includes(term)) : list;
+  if(filtered.length===0) return `<div class="picker-empty">কোনো ফলাফল নেই</div>`;
+  return filtered.map(o=>{
+    const label = o===''?'--নির্বাচন--':esc(o);
+    const isSelected = o===(currentCode||'');
+    return `<div class="picker-option${isSelected?' selected':''}" data-value="${esc(o)}">${label}</div>`;
+  }).join('');
+}
+function filterCodePicker(term){
+  if(!CODE_PICKER_STATE) return;
+  const entry = getMonthEntry(CURRENT_MONTH);
+  const row = entry.rows[CODE_PICKER_STATE.idx];
+  const listEl = document.getElementById('pickerOptionsList');
+  if(listEl) listEl.innerHTML = renderPickerOptionsHTML(row.code, CODE_PICKER_STATE.opts, term);
+}
+function handlePickerOptionClick(e){
+  const opt = e.target.closest('.picker-option');
+  if(!opt) return;
+  const value = opt.dataset.value || '';
+  const idx = CODE_PICKER_STATE ? CODE_PICKER_STATE.idx : null;
+  closeCodePicker();
+  if(idx!=null) handleCodeChange(idx, value);
+}
+function handleCodeChange(idx, val){
+  if(STATE.submitted[CURRENT_MONTH]){
+    const proceed = confirm('এই রিপোর্টটি ইতিমধ্যে জমা দেওয়া হয়েছে। আপনি কি এই নির্বাচন পরিবর্তন করতে চান?');
+    if(!proceed){ renderTabPreservingFocus(); return; }
+  }
+  updateRow(idx, 'code', val);
+}
+async function updateRow(idx, field, val){
+  const entry = getMonthEntry(CURRENT_MONTH);
+  entry.rows[idx][field] = val;
+  entry.activeIdx = idx;
+  const el0 = document.activeElement;
+  const activeId = (el0 && el0.id) ? el0.id : null;
+  SAVING_IN_PROGRESS = true;
+  await saveState();
+  SAVING_IN_PROGRESS = false;
+  renderTab();
+  if(activeId){
+    const el = document.getElementById(activeId);
+    if(el) el.focus();
+  }
+}
+function fillRemarks(){
+  const entry = getMonthEntry(CURRENT_MONTH);
+  const hMap = holidayMap();
+  let count=0;
+  entry.rows.forEach(row=>{
+    const d = new Date(row.date+'T00:00:00');
+    const holiday = hMap[row.date];
+    if(holiday && !row.remark){ row.remark = holiday; count++; }
+    else if(d.getDay()===5 && !row.remark){ row.remark = 'সাপ্তাহিক ছুটি (শুক্রবার)'; count++; }
+  });
+  saveState(); renderTab();
+  toast(count+' টি সারিতে মন্তব্য বসানো হয়েছে');
+}
+function clearMonth(){
+  if(STATE.submitted[CURRENT_MONTH]){
+    toast('⚠ এই মাসের রিপোর্ট জমা দেওয়া আছে, তাই Clear কাজ করবে না। মুছতে হলে আগে "জমা বাতিল করুন" চাপুন।', 5000);
+    return;
+  }
+  if(!confirm('এই মাসের সব সিলেকশন ও মন্তব্য মুছে ফেলা হবে। আপনি কি নিশ্চিত?')) return;
+  getMonthEntry(CURRENT_MONTH).rows.forEach(row=>{ row.code=''; row.remark=''; });
+  saveState(); renderTab();
+  toast('এই মাসের সব তথ্য মুছে ফেলা হয়েছে');
+}
+let SAVING_IN_PROGRESS = false;
+
+function buildOffscreenClone(){
+  const sheet = document.getElementById('reportSheet');
+  if(!sheet) return null;
+  const clone = sheet.cloneNode(true);
+  clone.removeAttribute('id');
+  clone.style.width = '198mm';
+  clone.style.maxWidth = '198mm';
+  const cloneTable = clone.querySelector('#reportTableScale, .report-table-scale');
+  if(cloneTable){ cloneTable.style.zoom = '1'; cloneTable.removeAttribute('id'); }
+  const cloneWrap = clone.querySelector('.table-wrap');
+  if(cloneWrap) cloneWrap.style.height = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'pdf-export-mode';
+  wrap.style.cssText = 'position:fixed;top:0;left:-10000px;background:#fff;pointer-events:none;';
+  wrap.appendChild(clone);
+  document.body.appendChild(wrap);
+  return { wrap, clone };
+}
+function autofitCells(root){
+  const rows = Array.from(root.querySelectorAll('table tbody tr'));
+  const mainCellsByRow = rows.map(row=>Array.from(row.querySelectorAll('td:not(.select-col)')).slice(0,14));
+  const allMainCells = mainCellsByRow.flat();
+  const MAIN_MAX = 12.5, MAIN_MIN = 6.5;
+  let size = MAIN_MAX;
+  allMainCells.forEach(td=>{ td.style.whiteSpace='nowrap'; td.style.fontSize=size+'px'; });
+  let guard = 0;
+  while(allMainCells.some(td=>td.scrollWidth > td.clientWidth) && size > MAIN_MIN && guard < 20){
+    size -= 0.5;
+    allMainCells.forEach(td=>{ td.style.fontSize = size+'px'; });
+    guard++;
+  }
+  allMainCells.forEach(td=>{
+    if(td.scrollWidth > td.clientWidth){ td.style.whiteSpace='normal'; }
+  });
+  const results = [];
+  rows.forEach((row,ri)=>{
+    const cells = Array.from(row.querySelectorAll('td:not(.select-col)'));
+    const rowResult = mainCellsByRow[ri].map(td=>({size, wrapMode: td.style.whiteSpace==='normal' ? 'normal' : 'nowrap'}));
+    const remarkTd = cells[14];
+    if(remarkTd){
+      let rSize = size;
+      remarkTd.style.whiteSpace = 'nowrap';
+      remarkTd.style.fontSize = rSize + 'px';
+      let g = 0;
+      while(remarkTd.scrollWidth > remarkTd.clientWidth && rSize > 6.5 && g < 20){
+        rSize -= 0.5;
+        remarkTd.style.fontSize = rSize + 'px';
+        g++;
+      }
+      let wrapMode = 'nowrap';
+      if(remarkTd.scrollWidth > remarkTd.clientWidth){
+        wrapMode = 'normal';
+        remarkTd.style.whiteSpace = 'normal';
+      }
+      rowResult.push({size:rSize, wrapMode});
+    }
+    results.push(rowResult);
+  });
+  return results;
+}
+function applyFitResultsToLiveSheet(results){
+  const sheet = document.getElementById('reportSheet');
+  if(!sheet) return;
+  sheet.querySelectorAll('table tbody tr').forEach((row, ri)=>{
+    const cells = row.querySelectorAll('td:not(.select-col)');
+    const rr = results[ri];
+    if(!rr) return;
+    cells.forEach((td, i)=>{
+      const r = rr[i];
+      if(!r) return;
+      td.style.setProperty('--fit-size', r.size + 'px');
+      td.style.setProperty('--fit-wrap', r.wrapMode);
+    });
+  });
+}
+function clearFitResultsFromLiveSheet(){
+  const sheet = document.getElementById('reportSheet');
+  if(!sheet) return;
+  sheet.querySelectorAll('table tbody td').forEach(td=>{
+    td.style.removeProperty('--fit-size');
+    td.style.removeProperty('--fit-wrap');
+  });
+}
+function stretchRowsToFillPage(root){
+  const table = root.querySelector('table');
+  const tbody = root.querySelector('table tbody');
+  const thead = root.querySelector('table thead');
+  if(!table || !tbody) return [];
+
+  const calib = document.createElement('div');
+  calib.style.cssText = 'position:fixed;visibility:hidden;height:285mm;width:0;';
+  document.body.appendChild(calib);
+  const targetTotalPx = calib.getBoundingClientRect().height;
+  calib.remove();
+
+  const rootRect = root.getBoundingClientRect();
+  const tableRect = table.getBoundingClientRect();
+  const nonTableHeight = rootRect.height - tableRect.height;
+  const theadHeight = thead ? thead.getBoundingClientRect().height : 0;
+
+  const bodyRows = Array.from(tbody.querySelectorAll('tr'));
+  const numRows = bodyRows.length;
+  if(numRows===0) return [];
+
+  const currentBodyHeight = bodyRows.reduce((sum,tr)=>sum+tr.getBoundingClientRect().height, 0);
+  const availableForBody = targetTotalPx - nonTableHeight - theadHeight;
+  const extra = availableForBody - currentBodyHeight;
+  const heights = [];
+  if(extra > 4){
+    const perRowExtra = extra / numRows;
+    bodyRows.forEach(tr=>{
+      const h = tr.getBoundingClientRect().height + perRowExtra;
+      tr.style.height = h + 'px';
+      heights.push(h);
+    });
+  } else {
+    bodyRows.forEach(tr=>heights.push(tr.getBoundingClientRect().height));
+  }
+  return heights;
+}
+function applyRowHeightsToLiveSheet(heights){
+  const sheet = document.getElementById('reportSheet');
+  if(!sheet) return;
+  sheet.querySelectorAll('table tbody tr').forEach((tr,i)=>{
+    if(heights[i]!=null) tr.style.setProperty('--row-h', heights[i] + 'px');
+  });
+}
+function clearRowHeightsFromLiveSheet(){
+  const sheet = document.getElementById('reportSheet');
+  if(!sheet) return;
+  sheet.querySelectorAll('table tbody tr').forEach(tr=>tr.style.removeProperty('--row-h'));
+}
+
+async function ensureFontsLoaded(){
+  if(!(window.document && document.fonts && document.fonts.load)) return;
+  try{
+    await Promise.all([
+      document.fonts.load('400 14px "Noto Serif Bengali"'),
+      document.fonts.load('700 14px "Noto Serif Bengali"'),
+      document.fonts.load('400 12px "Noto Sans Bengali"'),
+      document.fonts.load('600 12px "Noto Sans Bengali"'),
+      document.fonts.load('700 12px "Noto Sans Bengali"'),
+      document.fonts.ready
+    ]);
+  }catch(e){ }
+}
+async function printReport(){
+  const prevTitle = document.title;
+  document.title = reportFileBaseName(CURRENT_MONTH);
+  await ensureFontsLoaded();
+  const off = buildOffscreenClone();
+  if(off){
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    const results = autofitCells(off.clone);
+    applyFitResultsToLiveSheet(results);
+    const heights = stretchRowsToFillPage(off.clone);
+    applyRowHeightsToLiveSheet(heights);
+    off.wrap.remove();
+  }
+  let restored = false;
+  const restore = ()=>{
+    if(restored) return;
+    restored = true;
+    document.title = prevTitle;
+    clearFitResultsFromLiveSheet();
+    clearRowHeightsFromLiveSheet();
+    window.removeEventListener('afterprint', restore);
+    document.removeEventListener('visibilitychange', onVisChange);
+  };
+  const onVisChange = ()=>{
+    if(document.visibilityState === 'visible') restore();
+  };
+  window.addEventListener('afterprint', restore);
+  document.addEventListener('visibilitychange', onVisChange);
+  setTimeout(restore, 120000);
+  window.print();
+}
+
+/* ================= WhatsApp-এ স্বয়ংক্রিয়ভাবে PDF শেয়ার (শুধু Mobile "PDF ডাউনলোড করুন" বাটনের জন্য) =================
+   এই নম্বরটাই সেই নির্দিষ্ট WhatsApp নম্বর যেখানে রিপোর্ট পাঠাতে হবে। ⚠ ব্রাউজারের Web Share API
+   কোনো নির্দিষ্ট Contact/Number আগে থেকে বেছে দিতে পারে না (এটা ব্রাউজার/OS-এর নিরাপত্তা সীমাবদ্ধতা,
+   কোনো ব্যক্তিগত WhatsApp নম্বরে ফাইল সম্পূর্ণ silent/zero-tap পাঠানোর কোনো Public API নেই) — তাই
+   এই নম্বরটা শুধু Share sheet-এর সাথে যাওয়া বার্তায় মনে করিয়ে দেওয়ার জন্য ব্যবহার হয়; ব্যবহারকারীকে
+   শেয়ার-তালিকায় WhatsApp বেছে, তারপর এই নম্বর/কন্টাক্ট নিজে সিলেক্ট করে "Send" চাপতে হবে। */
+const WHATSAPP_TARGET_NUMBER = '+8801821299993';
+
+/* pdf.save() (নিচে অপরিবর্তিত রাখা হয়েছে) দিয়ে যে একই PDF ইতিমধ্যে ডাউনলোড হয়ে গেছে, ঠিক সেই
+   একই Blob দিয়ে (কোনো নতুন Template/আলাদা Generation ছাড়াই) ফোনের নেটিভ Share Sheet খোলার চেষ্টা
+   করা হয় — সমর্থিত ব্রাউজারে (Android Chrome/Edge, আধুনিক iOS Safari) WhatsApp আইকন সেই তালিকায়
+   PDF-সহ থাকবে। অসমর্থিত ব্রাউজারে (ডেস্কটপ, পুরনো ব্রাউজার) কিছুই ঘটে না — আগের মতোই শুধু ডাউনলোড
+   হয়ে যায়, কোনো error দেখানো হয় না। */
+async function tryShareGeneratedPDF(pdf, fileName){
+  try{
+    if(!(navigator.share && navigator.canShare)) return;
+    const blob = pdf.output('blob');
+    const file = new File([blob], fileName, {type:'application/pdf'});
+    if(!navigator.canShare({files:[file]})) return;
+    await navigator.share({
+      files:[file],
+      title: fileName,
+      text: `মাসিক রিপোর্ট — অনুগ্রহ করে WhatsApp-এ ${WHATSAPP_TARGET_NUMBER} নম্বরে পাঠান`
+    });
+    toast('📤 শেয়ার তালিকা খোলা হয়েছে — সেখান থেকে WhatsApp বেছে নিয়ে পাঠিয়ে দিন', 4500);
+  }catch(e){
+    // ব্যবহারকারী শেয়ার বাতিল করলে (AbortError) — কোনো সমস্যা নেই, PDF তো আগেই ডাউনলোড হয়ে গেছে
+    if(e && e.name !== 'AbortError'){ console.error('whatsapp share failed', e); }
+  }
+}
+
+async function downloadPDFViaImage(){
+  if(!document.getElementById('reportSheet')) return;
+  if(!(window.html2canvas && window.jspdf)){
+    toast('⚠ PDF তৈরির লাইব্রেরি লোড হয়নি — ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন', 4500);
+    return;
+  }
+  toast('📄 PDF তৈরি করা হচ্ছে... একটু অপেক্ষা করুন', 9000);
+  await ensureFontsLoaded();
+  const off = buildOffscreenClone();
+  if(!off) return;
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  autofitCells(off.clone);
+  stretchRowsToFillPage(off.clone);
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  try{
+    const canvas = await html2canvas(off.clone, {scale:3, backgroundColor:'#ffffff', useCORS:true, logging:false});
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
+    const pageWidth = 210, pageHeight = 297;
+    const imgW = pageWidth;
+    const imgH = canvas.height * imgW / canvas.width;
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgW, Math.min(imgH, pageHeight));
+    const fileName = reportFileBaseName(CURRENT_MONTH) + '.pdf';
+    pdf.save(fileName);
+    toast('✅ PDF ডাউনলোড হয়েছে — এখন হোয়াটসঅ্যাপ খুলে ফাইলটি Attach করে পাঠাতে পারেন', 5000);
+    // উপরের ডাউনলোড অপরিবর্তিত রেখে, একই PDF দিয়ে সমর্থিত ফোনে WhatsApp শেয়ার সীট খোলার চেষ্টা
+    await tryShareGeneratedPDF(pdf, fileName);
+  }catch(e){
+    console.error('pdf export failed', e);
+    toast('⚠ PDF তৈরি করতে সমস্যা হয়েছে, আবার চেষ্টা করুন', 4500);
+  }finally{
+    off.wrap.remove();
+  }
+}
+window.addEventListener('beforeunload', function(e){
+  if(SAVING_IN_PROGRESS){
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+/* ================= WhatsApp টেক্সট নোটিফিকেশন (CallMeBot দিয়ে) =================
+   CallMeBot-এর Free API শুধু Text Message পাঠাতে পারে (PDF/ফাইল নয়) — তাই রিপোর্ট জমা হওয়ার
+   সাথে সাথে PDF-টা এখানে সরাসরি পাঠানো হয় না, বরং শুধু একটা টেক্সট নোটিফিকেশন যায় যে রিপোর্ট
+   রেডি হয়ে গেছে। "কর্মী ও কেন্দ্র তালিকা" ট্যাবে (শুধু এডমিন দেখতে পারবেন) API Key/নম্বর/লিংক
+   সেট করা না থাকলে এই ফাংশন চুপচাপ কিছুই করে না। */
+async function sendCallMeBotNotification(text){
+  try{
+    const cfg = STATE.notifications;
+    if(!cfg || !cfg.callmebotApiKey || !cfg.notifyPhone) return;
+    const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(cfg.notifyPhone)}&text=${encodeURIComponent(text)}&apikey=${encodeURIComponent(cfg.callmebotApiKey)}`;
+    await fetch(url, {mode:'no-cors'});
+  }catch(e){
+    console.error('CallMeBot notification failed', e);
+  }
+}
+function buildSubmitNotificationText(ym){
+  const [y,m] = ym.split('-').map(Number);
+  const monthLabel = BN_MONTHS[m-1] + ' ' + bnNum(y);
+  const cfg = STATE.notifications;
+  let text = `✅ মাসিক রিপোর্ট জমা হয়েছে!\n\nমাস: ${monthLabel}\nকর্মী: ${STATE.worker.name}\n\nরিপোর্টটি এখন প্রিন্ট অথবা WhatsApp-এ পাঠানোর জন্য প্রস্তুত।`;
+  if(cfg && cfg.appLink){ text += `\n\n🔗 রিপোর্ট খুলতে: ${cfg.appLink}`; }
+  return text;
+}
+async function submitMonth(){
+  if(!remarksFullyFilled(CURRENT_MONTH)){
+    const proceed = confirm('⚠ এই মাসে কিছু ছুটির দিন/শুক্রবারে এখনও মন্তব্য বসানো হয়নি।\n\nআগে "🗓 Fill Remark" বাটনে চেপে ছুটিগুলো বসিয়ে নিন, তারপর জমা দিন।\n\n(তারপরও এভাবেই জমা দিতে চাইলে "OK" চাপুন, নাহলে "Cancel" চেপে আগে Fill Remark করে নিন)');
+    if(!proceed) return;
+  }
+  const submittedYm = CURRENT_MONTH;
+  STATE.submitted[CURRENT_MONTH] = new Date().toISOString();
+  delete getMonthEntry(CURRENT_MONTH).activeIdx;
+  SAVING_IN_PROGRESS = true;
+  toast('সংরক্ষণ করা হচ্ছে... একটু অপেক্ষা করুন');
+  let ok = false;
+  for(let attempt=1; attempt<=3 && !ok; attempt++){
+    ok = await saveState();
+    if(!ok && attempt<3){
+      toast(`সংরক্ষণে সমস্যা হয়েছে, আবার চেষ্টা করা হচ্ছে... (${attempt}/৩)`);
+      await new Promise(r=>setTimeout(r, 1200*attempt));
+    }
+  }
+  SAVING_IN_PROGRESS = false;
+  if(ok){
+    sendCallMeBotNotification(buildSubmitNotificationText(submittedYm));
+    const nextYm = nextMonthStr(CURRENT_MONTH);
+    CURRENT_MONTH = nextYm;
+    STATE.currentMonth = nextYm;
+    saveState();
+    renderTab();
+    toast('মাসিক রিপোর্ট জমা হয়েছে ✔ — পরবর্তী মাস স্বয়ংক্রিয়ভাবে সিলেক্ট হয়েছে');
+  } else {
+    delete STATE.submitted[CURRENT_MONTH];
+    renderTab();
+    toast('⚠ ৩ বার চেষ্টা করেও সংরক্ষণ ব্যর্থ হয়েছে — নিচে কারণ দেখুন', 6000);
+  }
+}
+async function unsubmitMonth(){
+  delete STATE.submitted[CURRENT_MONTH];
+  SAVING_IN_PROGRESS = true;
+  await saveState();
+  SAVING_IN_PROGRESS = false;
+  renderTab();
+}
+
+function setupTabHTML(){
+  const w = STATE.worker;
+  const rows = STATE.centerRows.map((r,i)=>{
+    const total = (Number(r.houseTo||0)-Number(r.houseFrom||0)+1) + Number(r.newC||0) - Number(r.cancelC||0);
+    return `
+    <tr>
+      <td><input type="text" id="center-${r.id}-blockNo" value="${esc(r.blockNo)}" oninput="updateCenter('${r.id}','blockNo',this.value)" style="width:56px"></td>
+      <td><input type="text" id="center-${r.id}-note" value="${esc(r.note)}" placeholder="—" oninput="updateCenter('${r.id}','note',this.value)" style="width:44px"></td>
+      <td>
+        <select id="center-${r.id}-purpose" onchange="updateCenter('${r.id}','purpose',this.value)" style="min-width:90px">
+          ${['IPC','EPI','সি সি সেবা'].map(p=>`<option value="${p}" ${r.purpose===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+      </td>
+      <td><input type="text" id="center-${r.id}-mouzaNo" value="${esc(r.mouzaNo)}" oninput="updateCenter('${r.id}','mouzaNo',this.value)" style="width:56px"></td>
+      <td><input type="text" id="center-${r.id}-mouzaName" value="${esc(r.mouzaName)}" placeholder="মৌজার নাম" oninput="updateCenter('${r.id}','mouzaName',this.value)"></td>
+      <td><input type="text" id="center-${r.id}-villageName" value="${esc(r.villageName)}" placeholder="গ্রামের নাম" oninput="updateCenter('${r.id}','villageName',this.value)"></td>
+      <td><input type="number" id="center-${r.id}-houseFrom" value="${r.houseFrom}" oninput="updateCenter('${r.id}','houseFrom',this.value)" style="width:64px"></td>
+      <td><input type="number" id="center-${r.id}-houseTo" value="${r.houseTo}" oninput="updateCenter('${r.id}','houseTo',this.value)" style="width:64px"></td>
+      <td><input type="number" id="center-${r.id}-newC" value="${r.newC||0}" oninput="updateCenter('${r.id}','newC',this.value)" style="width:52px"></td>
+      <td><input type="number" id="center-${r.id}-cancelC" value="${r.cancelC||0}" oninput="updateCenter('${r.id}','cancelC',this.value)" style="width:52px"></td>
+      <td class="muted">${bnNum(total)}</td>
+      <td><input type="text" id="center-${r.id}-ownerName" value="${esc(r.ownerName)}" placeholder="মালিকের নাম" oninput="updateCenter('${r.id}','ownerName',this.value)"></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteCenter('${r.id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  return `
+  <div class="card">
+    <h2>কর্মীর তথ্য</h2>
+    <div class="grid">
+      <div class="field"><label>কর্মীর নাম</label><input type="text" value="${esc(w.name)}" oninput="updateWorker('name',this.value)"></div>
+      <div class="field"><label>পদবি</label><input type="text" value="${esc(w.designation)}" oninput="updateWorker('designation',this.value)"></div>
+      <div class="field"><label>মোবাইল</label><input type="text" value="${esc(w.mobile)}" oninput="updateWorker('mobile',this.value)"></div>
+      <div class="field"><label>উপজেলা</label><input type="text" value="${esc(w.upazila)}" oninput="updateWorker('upazila',this.value)"></div>
+      <div class="field"><label>জেলা</label><input type="text" value="${esc(w.district)}" oninput="updateWorker('district',this.value)"></div>
+      <div class="field"><label>ইউনিয়ন</label><input type="text" value="${esc(w.union)}" oninput="updateWorker('union',this.value)"></div>
+      <div class="field"><label>ওয়ার্ড নং</label><input type="text" value="${esc(w.wardNo)}" oninput="updateWorker('wardNo',this.value)"></div>
+    </div>
+    <div class="field" style="margin-top:6px;max-width:320px;">
+      <label>স্বাক্ষর (শুধু প্রিন্ট/PDF-এ দেখাবে, স্ক্রিনে দেখাবে না)</label>
+      ${w.signatureImage ? `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px;">
+        <img src="${w.signatureImage}" alt="স্বাক্ষর" style="height:50px;max-width:160px;object-fit:contain;border:1px solid var(--paper-line);border-radius:6px;background:#fffdf8;padding:4px;">
+        <button class="btn btn-danger btn-sm" onclick="removeSignature()">✕ মুছুন</button>
+      </div>` : ''}
+      <input type="file" accept="image/*" onchange="handleSignatureUpload(this)">
+      <div class="hint">সাদা ব্যাকগ্রাউন্ডে স্বাক্ষরের একটা স্পষ্ট ছবি তুললে সবচেয়ে ভালো ফলাফল পাওয়া যাবে</div>
+    </div>
+  </div>
+  ${CURRENT_ROLE==='admin' ? adminLoginSettingsHTML() : ''}
+  <div class="card">
+    <div class="top-bar">
+      <h2 style="border:none;margin:0;">কেন্দ্র তালিকা (Center details)</h2>
+      <button class="btn btn-primary btn-sm" onclick="addCenter()">+ নতুন কেন্দ্র যোগ করুন</button>
+    </div>
+    <p class="hint" style="margin-top:-6px;margin-bottom:12px;">
+      এই তালিকা থেকেই মাসিক রিপোর্টের ড্রপডাউন তৈরি হয়। প্রতি বছর কেন্দ্র/ব্লক/বাড়ির রেঞ্জ পরিবর্তন হলে এখানে সরাসরি এডিট করুন, বা নতুন সারি যোগ করুন — কোনো কোড লাগবে না।
+    </p>
+    <div style="overflow-x:auto;">
+    <table class="setup-table center-table">
+      <thead><tr>
+        <th>ব্লক</th><th>চিহ্ন</th><th>উদ্দেশ্য</th><th>মৌজা নং</th><th>মৌজা নাম</th><th>গ্রামের নাম</th>
+        <th>বাড়ি (হইতে)</th><th>বাড়ি (পর্যন্ত)</th><th>নতুন</th><th>বিলুপ্ত</th><th>মোট</th><th>মালিকের নাম</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+  </div>`;
+}
+function updateWorker(field,val){ STATE.worker[field]=val; saveState(); }
+function resizeImageToDataUrl(file, maxWidth, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error('ফাইল পড়া যায়নি'));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>reject(new Error('ছবি লোড করা যায়নি'));
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w > maxWidth){ h = Math.round(h * (maxWidth/w)); w = maxWidth; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+async function handleSignatureUpload(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ toast('⚠ শুধু ছবি ফাইল আপলোড করুন'); input.value=''; return; }
+  try{
+    toast('স্বাক্ষরের ছবি প্রসেস করা হচ্ছে...');
+    const dataUrl = await resizeImageToDataUrl(file, 500, 0.85);
+    STATE.worker.signatureImage = dataUrl;
+    await saveState();
+    renderTab();
+    toast('স্বাক্ষর সংরক্ষণ করা হয়েছে ✔ — প্রিন্ট/PDF করলে এখন এটা দেখা যাবে');
+  }catch(e){
+    console.error('signature upload failed', e);
+    toast('⚠ ছবি প্রসেস করতে সমস্যা হয়েছে, আবার চেষ্টা করুন');
+  }
+  input.value = '';
+}
+function removeSignature(){
+  if(!confirm('স্বাক্ষরের ছবিটি মুছে ফেলা হবে। আপনি কি নিশ্চিত?')) return;
+  STATE.worker.signatureImage = null;
+  saveState();
+  renderTab();
+}
+function adminLoginSettingsHTML(){
+  const n = STATE.notifications || { callmebotApiKey:'', notifyPhone:'8801821299993', appLink:'' };
+  return `
+  <div class="card">
+    <h2>লগইন তথ্য (শুধু এডমিন দেখতে পারবেন)</h2>
+    <p class="hint" style="margin-top:-6px;margin-bottom:12px;">অ্যাকাউন্টের ইমেইল ও পাসওয়ার্ড এখন Firebase Authentication দিয়ে নিরাপদে সংরক্ষিত থাকে (এই অ্যাপের ডেটাবেজে নয়)। পাসওয়ার্ড বদলাতে চাইলে লগইন পেজের "পাসওয়ার্ড ভুলে গেছেন?" থেকে রিসেট লিংক পাঠান, অথবা Firebase Console → Authentication → Users থেকে সরাসরি বদলান।</p>
+    <div class="grid">
+      <div class="field"><label>👑 এডমিন ইমেইল</label><input type="text" value="${esc(ROLE_ACCOUNTS.admin.email)}" disabled></div>
+      <div class="field"><label>👤 ইউজার ইমেইল</label><input type="text" value="${esc(ROLE_ACCOUNTS.user.email)}" disabled></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>WhatsApp নোটিফিকেশন (রিপোর্ট জমা হলে স্বয়ংক্রিয় বার্তা)</h2>
+    <p class="hint" style="margin-top:-6px;margin-bottom:12px;">
+      কেউ মাসিক রিপোর্ট "জমা" দিলেই নিচে দেওয়া নম্বরে একটা WhatsApp টেক্সট বার্তা স্বয়ংক্রিয়ভাবে যাবে —
+      এটা <a href="https://www.callmebot.com/blog/free-api-whatsapp-messages/" target="_blank" rel="noopener">CallMeBot</a>-এর Free API ব্যবহার করে। ⚠ এই Free API দিয়ে শুধু <strong>টেক্সট</strong> পাঠানো যায়, PDF/ফাইল সরাসরি পাঠানো যায় না — তাই নিচে "অ্যাপ লিংক" দিয়ে দিলে সেটা বার্তায় জুড়ে যাবে, যেখানে ট্যাপ করে গিয়ে প্রিন্ট/PDF বাটন চাপা যাবে।
+    </p>
+    <p class="hint" style="margin-bottom:12px;">
+      <strong>API Key পাওয়ার ধাপ (একবারই করতে হবে, যেই ফোনে নোটিফিকেশন পেতে চান সেটা থেকে):</strong><br>
+      ১) <a href="https://www.callmebot.com/blog/free-api-whatsapp-messages/" target="_blank" rel="noopener">এই পেজ থেকে</a> CallMeBot-এর বর্তমান বট নম্বরটি Contact-এ যোগ করুন (নম্বরটা মাঝেমাঝে বদলায়, তাই পেজ থেকেই দেখে নিন)<br>
+      ২) সেই Contact-এ WhatsApp-এ লিখে পাঠান: <em>I allow callmebot to send me messages</em><br>
+      ৩) কিছুক্ষণের মধ্যে বট একটা APIKEY-সহ রিপ্লাই পাঠাবে — সেটা নিচে বসান
+    </p>
+    <div class="grid">
+      <div class="field"><label>CallMeBot API Key</label><input type="text" id="notify-callmebotApiKey" value="${esc(n.callmebotApiKey)}" placeholder="বট থেকে পাওয়া APIKEY" oninput="updateNotifyConfig('callmebotApiKey',this.value)"></div>
+      <div class="field"><label>নোটিফিকেশন WhatsApp নম্বর</label><input type="text" id="notify-notifyPhone" value="${esc(n.notifyPhone)}" placeholder="দেশের কোড-সহ, যেমন 8801XXXXXXXXX" oninput="updateNotifyConfig('notifyPhone',this.value)"></div>
+      <div class="field"><label>অ্যাপ লিংক (ঐচ্ছিক)</label><input type="text" id="notify-appLink" value="${esc(n.appLink)}" placeholder="যেমন https://yourapp.web.app" oninput="updateNotifyConfig('appLink',this.value)"></div>
+    </div>
+    <div class="row-actions" style="margin-top:0;">
+      <button class="btn btn-outline btn-sm" onclick="testWhatsAppNotification()">📤 টেস্ট মেসেজ পাঠান</button>
+    </div>
+  </div>`;
+}
+function updateNotifyConfig(field,val){
+  if(!STATE.notifications) STATE.notifications = { callmebotApiKey:'', notifyPhone:'8801821299993', appLink:'' };
+  STATE.notifications[field] = val;
+  saveState();
+}
+async function testWhatsAppNotification(){
+  const n = STATE.notifications;
+  if(!n || !n.callmebotApiKey || !n.notifyPhone){
+    toast('⚠ আগে API Key ও নম্বর পূরণ করুন', 3500);
+    return;
+  }
+  toast('📤 টেস্ট মেসেজ পাঠানো হচ্ছে...', 3000);
+  await sendCallMeBotNotification('✅ এটা মাসিক রিপোর্ট অ্যাপ থেকে একটা টেস্ট মেসেজ — সেটআপ ঠিকভাবে কাজ করছে।');
+  toast('পাঠানো হয়েছে — WhatsApp চেক করুন (না পেলে API Key/নম্বর আবার যাচাই করুন)', 4500);
+}
+function renderTabPreservingFocus(){
+  const active = document.activeElement;
+  let saved = null;
+  if(active && active.id && (active.tagName==='INPUT' || active.tagName==='SELECT' || active.tagName==='TEXTAREA')){
+    saved = {id:active.id, start:active.selectionStart, end:active.selectionEnd};
+  }
+  renderTab();
+  if(saved){
+    const el = document.getElementById(saved.id);
+    if(el){
+      el.focus();
+      if(typeof el.setSelectionRange==='function' && saved.start!=null){
+        try{ el.setSelectionRange(saved.start, saved.end); }catch(e){ }
+      }
+    }
+  }
+}
+function updateCenter(id,field,val){
+  const r = STATE.centerRows.find(x=>x.id===id);
+  if(!r) return;
+  if(['houseFrom','houseTo','newC','cancelC'].includes(field)) val = Number(val)||0;
+  r[field]=val; saveState(); renderTabPreservingFocus();
+}
+function addCenter(){
+  const id = 'c'+(STATE.nextRowId++);
+  STATE.centerRows.push({id, mouzaNo:'', mouzaName:'', villageName:'', houseFrom:0, houseTo:0, newC:0, cancelC:0, blockNo:'', ownerName:'', purpose:'IPC', note:''});
+  saveState(); renderTab();
+  toast('নতুন কেন্দ্র সারি যোগ করা হয়েছে');
+}
+function deleteCenter(id){
+  if(!confirm('এই কেন্দ্রের তথ্য মুছে ফেলা হবে। নিশ্চিত?')) return;
+  STATE.centerRows = STATE.centerRows.filter(r=>r.id!==id);
+  saveState(); renderTab();
 }
 
 function holidaysTabHTML(){
-  const yr = currentHolidayYear();
-  const years = holidayYears();
-  if(yr!=='all' && !years.includes(yr)){ years.push(yr); years.sort(); }
-
-  const sorted = STATE.holidays
-    .filter(h=> yr==='all' || (h.date||'').slice(0,4)===yr)
-    .sort((a,b)=> (a.date||'').localeCompare(b.date||''));   // একই তারিখে আগের ক্রম বজায় থাকে
-
+  const sorted = [...STATE.holidays].sort((a,b)=> (a.date||'').localeCompare(b.date||''));
   const rows = sorted.map(h=>`
-    <tr id="holiday-row-${h.id}" class="${HOLIDAY_HL_ID===h.id?'hl-row':''}">
-      <td><input type="date" id="holiday-${h.id}-date" value="${esc(h.date)}" onchange="updateHoliday('${h.id}','date',this.value)" onblur="holidayDateBlur('${h.id}')" style="width:150px"></td>
+    <tr>
+      <td><input type="date" id="holiday-${h.id}-date" value="${esc(h.date)}" onchange="updateHoliday('${h.id}','date',this.value)" style="width:150px"></td>
       <td><input type="text" id="holiday-${h.id}-name" value="${esc(h.name)}" placeholder="ছুটির নাম" oninput="updateHoliday('${h.id}','name',this.value)"></td>
-      <td style="white-space:nowrap;">
-        <button class="btn btn-outline btn-sm" onclick="duplicateHoliday('${h.id}')" title="এই সারির হুবহু কপি তৈরি করুন — তারপর তারিখ বদলে নিন">⧉ ডুপ্লিকেট</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteHoliday('${h.id}')">✕</button>
-      </td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteHoliday('${h.id}')">✕</button></td>
     </tr>`).join('');
-
-  const fromDefault = yr!=='all' ? yr : (years[years.length-1] || String(new Date().getFullYear()));
-  const toDefault = String(Number(fromDefault)+1);
-  const yearOpts = ['all', ...years].map(y=>
-    `<option value="${y}" ${y===yr?'selected':''}>${y==='all'?'সব বছর':bnNum(y)}</option>`).join('');
-  const fromOpts = years.map(y=>`<option value="${y}" ${y===fromDefault?'selected':''}>${bnNum(y)}</option>`).join('');
-
   return `
   <div class="card">
     <div class="top-bar">
@@ -80,112 +1767,458 @@ function holidaysTabHTML(){
     <p class="hint" style="margin-top:-6px;margin-bottom:12px;">
       এখানে যোগ/পরিবর্তন/মুছে ফেলা যেকোনো ছুটি "Fill Remark" বাটন চাপলে মাসিক রিপোর্টে স্বয়ংক্রিয়ভাবে বসে যাবে। প্রতি বছরের সরকারি ছুটির তালিকা এখানে আপডেট করে রাখুন।
     </p>
-
-    <div class="hcopy-panel no-print">
-      <div style="font-weight:700;color:var(--green-deep);width:100%;">📋 পুরো বছরের ছুটি ডুপ্লিকেট করুন</div>
-      <div class="field" style="margin:0;"><label>যে বছর থেকে কপি</label>
-        <select id="hcopyFrom" style="min-width:110px;">${fromOpts || '<option value="">—</option>'}</select></div>
-      <div class="field" style="margin:0;"><label>যে বছরে বসবে</label>
-        <input type="number" id="hcopyTo" value="${toDefault}" min="2000" max="2100" style="width:110px;"></div>
-      <button class="btn btn-gold btn-sm" onclick="duplicateHolidayYear()">কপি করুন</button>
-      <div class="hint" style="width:100%;margin:0;">নাম সব একই থাকবে, শুধু বছর বদলাবে। কপির পর প্রতিটি তারিখ নিচে থেকে এডিট করে নিন (ঈদ ইত্যাদির তারিখ প্রতি বছর বদলায়)।</div>
-    </div>
-
-    <div class="search-box">
-      <div class="field" style="max-width:200px;margin:0;"><label>বছর অনুযায়ী দেখুন</label>
-        <select onchange="setHolidayYear(this.value)">${yearOpts}</select></div>
-      <div class="hint" style="align-self:flex-end;">মোট ${bnNum(sorted.length)} টি ছুটি দেখানো হচ্ছে</div>
-    </div>
-
     ${sorted.length?`
     <div style="overflow-x:auto;">
     <table class="setup-table">
       <thead><tr><th>তারিখ</th><th>ছুটির নাম</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    </div>` : `<div class="empty">এই বছরে কোনো ছুটি যোগ করা নেই</div>`}
+    </div>` : `<div class="empty">কোনো ছুটি যোগ করা নেই</div>`}
   </div>`;
 }
-
-/* তারিখ/নাম লেখার সময় আর প্রতিবার পুরো ট্যাব রিরেন্ডার হয় না (আগে বছরের অংশ টাইপ করার সময়
-   প্রতিটা অঙ্কে সারি সরে যেত)। সেভ সাথে সাথেই হয়; সারি নতুন করে সাজানো হয় তারিখের ঘর থেকে বেরিয়ে গেলে। */
 function updateHoliday(id,field,val){
   const h = STATE.holidays.find(x=>x.id===id);
   if(!h) return;
-  h[field] = val;
-  if(field==='date') HOLIDAY_DATE_DIRTY = true;
-  saveState();
+  h[field]=val; saveState(); renderTabPreservingFocus();
 }
-function holidayDateBlur(id){
-  setTimeout(()=>{
-    if(!HOLIDAY_DATE_DIRTY) return;
-    const a = document.activeElement;
-    if(a && a.tagName==='INPUT' && /^holiday-/.test(a.id||'')) return;   // অন্য ঘরে এডিট চলছে — পরে সাজানো হবে
-    HOLIDAY_DATE_DIRTY = false;
-    const h = STATE.holidays.find(x=>x.id===id);
-    if(!h) return;
-    const yr = currentHolidayYear();
-    if(yr!=='all' && h.date) HOLIDAY_YEAR = h.date.slice(0,4);   // সারিটা যেন বছরের ফিল্টারে হারিয়ে না যায়
-    HOLIDAY_HL_ID = id;
-    renderTab();
-    focusHolidayRow(id, 'name');
-  }, 250);
-}
-
 function addHoliday(){
-  const yr = currentHolidayYear();
-  const today = isoDate(new Date());
-  const date = (yr==='all' || today.slice(0,4)===yr) ? today : yr+'-01-01';
   const id = 'h'+(STATE.nextHolidayId++);
-  STATE.holidays.push({id, date, name:''});
-  HOLIDAY_HL_ID = id;
+  STATE.holidays.push({id, date:CURRENT_MONTH+'-01', name:''});
   saveState(); renderTab();
-  focusHolidayRow(id, 'name');
-  toast('নতুন ছুটির সারি যোগ হয়েছে (হলুদ সারিটি দেখুন) — তারিখ ও নাম লিখুন');
+  toast('নতুন ছুটি যোগ করা হয়েছে');
 }
-
-/* একটা সারির হুবহু কপি ঠিক নিচে বসে; তারিখের ঘরে কার্সর চলে যায়, তারিখ বদলে নিলেই হবে */
-function duplicateHoliday(id){
-  const idx = STATE.holidays.findIndex(h=>h.id===id);
-  if(idx<0) return;
-  const src = STATE.holidays[idx];
-  const nid = 'h'+(STATE.nextHolidayId++);
-  STATE.holidays.splice(idx+1, 0, {id:nid, date:src.date, name:src.name});
-  HOLIDAY_HL_ID = nid;
-  saveState(); renderTab();
-  focusHolidayRow(nid, 'date');
-  toast('সারিটি ডুপ্লিকেট হয়েছে — এখন নতুন সারির তারিখ বদলে নিন');
-}
-
-/* পুরো বছরের ছুটি অন্য বছরে কপি (নাম একই, শুধু বছর বদলায়) */
-function duplicateHolidayYear(){
-  const from = document.getElementById('hcopyFrom').value;
-  const to = String(document.getElementById('hcopyTo').value).trim();
-  if(!from){ toast('⚠ কপি করার মতো কোনো বছর নেই', 3500); return; }
-  if(!/^\d{4}$/.test(to)){ toast('⚠ টার্গেট বছর সঠিকভাবে লিখুন (যেমন 2028)', 3500); return; }
-  if(from===to){ toast('⚠ যে বছর থেকে কপি আর যে বছরে বসবে — দুটো একই হতে পারবে না', 4000); return; }
-  const src = STATE.holidays
-    .filter(h=>(h.date||'').slice(0,4)===from)
-    .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  if(!src.length){ toast('⚠ '+bnNum(from)+' সালে কোনো ছুটি নেই', 3500); return; }
-  if(!confirm(`${bnNum(from)} সালের ${bnNum(src.length)} টি ছুটি ${bnNum(to)} সালে কপি হবে।\nকপির পর প্রতিটি তারিখ আলাদাভাবে এডিট করতে পারবেন। চালিয়ে যাবেন?`)) return;
-
-  const existing = new Set(STATE.holidays.filter(h=>(h.date||'').slice(0,4)===to).map(h=>h.date+'|'+h.name));
-  let added = 0, skipped = 0;
-  src.forEach(h=>{
-    let d = to + h.date.slice(4);
-    if(d.endsWith('-02-29') && !isLeapYear(Number(to))) d = to+'-02-28';
-    if(existing.has(d+'|'+h.name)){ skipped++; return; }
-    STATE.holidays.push({id:'h'+(STATE.nextHolidayId++), date:d, name:h.name});
-    added++;
-  });
-  HOLIDAY_YEAR = to;
-  saveState(); renderTab();
-  toast(`${bnNum(to)} সালে ${bnNum(added)} টি ছুটি কপি হয়েছে${skipped?` (${bnNum(skipped)} টি আগে থেকেই ছিল, বাদ)`:''} — এখন তারিখগুলো এডিট করুন`, 6000);
-}
-
 function deleteHoliday(id){
   STATE.holidays = STATE.holidays.filter(h=>h.id!==id);
   saveState(); renderTab();
 }
-```
+
+function allRowsFlat(){
+  const out = [];
+  Object.keys(STATE.entries).forEach(ym=>{
+    STATE.entries[ym].rows.forEach(r=>{
+      const info = lookupByCode(r.code);
+      if(!info) return;
+      out.push({date:r.date, newC:Number(info.row.newC||0), cancelC:Number(info.row.cancelC||0), total:info.total});
+    });
+  });
+  return out;
+}
+function allProgramDaysFlat(){
+  const out = [];
+  Object.keys(STATE.entries).forEach(ym=>{
+    STATE.entries[ym].rows.forEach(r=>{
+      if(!r.code || r.code==='----') return;
+      const info = lookupByCode(r.code);
+      const purpose = info ? info.row.purpose : (r.code==='সি সি সেবা' ? 'সি সি সেবা' : null);
+      out.push({date:r.date, purpose});
+    });
+  });
+  return out;
+}
+
+function monthlyProgramStats(){
+  const map = {};
+  allProgramDaysFlat().forEach(r=>{
+    const ym = r.date.slice(0,7);
+    if(!map[ym]) map[ym] = {count:0, ipc:0, epi:0};
+    map[ym].count++;
+    if(r.purpose==='IPC') map[ym].ipc++;
+    else if(r.purpose==='EPI') map[ym].epi++;
+  });
+  return Object.keys(map).sort().map(ym=>{
+    const [y,m] = ym.split('-').map(Number);
+    return { ym, label: `${BN_MONTHS[m-1]}-${bnNum(String(y).slice(2))}`, fullLabel: BN_MONTHS[m-1]+' '+bnNum(y),
+      count: map[ym].count, ipc: map[ym].ipc, epi: map[ym].epi };
+  });
+}
+function monthlyHouseStats(){
+  const map = {};
+  allRowsFlat_withPurpose().forEach(r=>{
+    const ym = r.date.slice(0,7);
+    if(!map[ym]) map[ym] = {total:0, ipc:0, epi:0};
+    map[ym].total += r.total;
+    if(r.purpose==='IPC') map[ym].ipc += r.total;
+    else if(r.purpose==='EPI') map[ym].epi += r.total;
+  });
+  return Object.keys(map).sort().map(ym=>{
+    const [y,m] = ym.split('-').map(Number);
+    return { ym, label: `${BN_MONTHS[m-1]}-${bnNum(String(y).slice(2))}`,
+      total: map[ym].total, ipc: map[ym].ipc, epi: map[ym].epi };
+  });
+}
+function allRowsFlat_withPurpose(){
+  const out = [];
+  Object.keys(STATE.entries).forEach(ym=>{
+    STATE.entries[ym].rows.forEach(r=>{
+      const info = lookupByCode(r.code);
+      if(!info) return;
+      out.push({date:r.date, total:info.total, purpose:info.row.purpose});
+    });
+  });
+  return out;
+}
+function renderGroupedBarChart(data, series){
+  if(!data.length) return '<div class="empty">কোনো ডেটা নেই — মাসিক রিপোর্টে কর্মসূচি বসালে এখানে চার্ট দেখা যাবে</div>';
+  const w=700,h=320,padL=38,padB=66,padT=26,padR=16;
+  const chartW=w-padL-padR, chartH=h-padT-padB;
+  const maxVal = Math.max(...data.flatMap(d=>series.map(s=>Number(d[s.key])||0)), 1);
+  const groupGap = chartW/data.length;
+  const barW = Math.min((groupGap*0.72)/series.length, 20);
+  const groupInnerWidth = barW*series.length;
+  let bars='', labels='';
+  data.forEach((d,gi)=>{
+    const groupX = padL + gi*groupGap + (groupGap-groupInnerWidth)/2;
+    series.forEach((s,si)=>{
+      const val = Number(d[s.key])||0;
+      const barH = (val/maxVal)*chartH;
+      const x = groupX + si*barW;
+      const y = padT + chartH - barH;
+      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(barW-2).toFixed(1)}" height="${barH.toFixed(1)}" style="fill:${s.color}" rx="2"/>`;
+      if(val>0) bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-4).toFixed(1)}" font-size="8" text-anchor="middle" style="fill:${s.color}" font-weight="700">${bnNum(val)}</text>`;
+    });
+    const lx=(groupX+groupInnerWidth/2).toFixed(1), ly=(h-padB+14).toFixed(1);
+    labels += `<text x="${lx}" y="${ly}" font-size="10" text-anchor="end" fill="#5a5648" transform="rotate(-40 ${lx} ${ly})">${d.label}</text>`;
+  });
+  const axisLine = `<line x1="${padL}" y1="${padT+chartH}" x2="${w-padR}" y2="${padT+chartH}" stroke="#d8d2bd" stroke-width="1"/>`;
+  const legend = series.map(s=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:16px;"><span style="width:12px;height:12px;background:${s.color};border-radius:3px;display:inline-block;"></span>${s.label}</span>`).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">${axisLine}${bars}${labels}</svg>
+  <div style="margin-top:10px;font-size:12.5px;display:flex;flex-wrap:wrap;">${legend}</div>`;
+}
+function renderBarChart(data){
+  if(!data.length) return '<div class="empty">কোনো ডেটা নেই — মাসিক রিপোর্টে কর্মসূচি বসালে এখানে চার্ট দেখা যাবে</div>';
+  const w=700,h=300,padL=36,padB=66,padT=26,padR=16;
+  const chartW=w-padL-padR, chartH=h-padT-padB;
+  const maxVal = Math.max(...data.map(d=>d.count), 1);
+  const gap = chartW/data.length;
+  const barW = Math.min(gap*0.6, 46);
+  let bars='', labels='';
+  data.forEach((d,i)=>{
+    const barH = (d.count/maxVal)*chartH;
+    const x = padL + i*gap + (gap-barW)/2;
+    const y = padT + chartH - barH;
+    const lx = (x+barW/2).toFixed(1), ly = (h-padB+14).toFixed(1);
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" style="fill:var(--green-mid)" rx="3"/>`;
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="11" text-anchor="middle" style="fill:var(--green-deep)" font-weight="700">${bnNum(d.count)}</text>`;
+    labels += `<text x="${lx}" y="${ly}" font-size="10" text-anchor="end" fill="#5a5648" transform="rotate(-40 ${lx} ${ly})">${d.label}</text>`;
+  });
+  const axisLine = `<line x1="${padL}" y1="${padT+chartH}" x2="${w-padR}" y2="${padT+chartH}" stroke="#d8d2bd" stroke-width="1"/>`;
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">${axisLine}${bars}${labels}</svg>`;
+}
+function renderLineChart(data){
+  if(!data.length) return '<div class="empty">কোনো ডেটা নেই — মাসিক রিপোর্টে কর্মসূচি বসালে এখানে চার্ট দেখা যাবে</div>';
+  const w=700,h=300,padL=36,padB=66,padT=26,padR=16;
+  const chartW=w-padL-padR, chartH=h-padT-padB;
+  const maxVal = Math.max(...data.map(d=>d.count), 1);
+  const stepX = data.length>1 ? chartW/(data.length-1) : 0;
+  const points = data.map((d,i)=>{
+    const x = padL + i*stepX;
+    const y = padT + chartH - (d.count/maxVal)*chartH;
+    return {x,y,d};
+  });
+  const pathD = points.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+  const areaD = pathD + ` L ${points[points.length-1].x.toFixed(1)} ${(padT+chartH).toFixed(1)} L ${points[0].x.toFixed(1)} ${(padT+chartH).toFixed(1)} Z`;
+  const dots = points.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#b5651d"/><text x="${p.x.toFixed(1)}" y="${(p.y-10).toFixed(1)}" font-size="11" text-anchor="middle" fill="#b5651d" font-weight="700">${bnNum(p.d.count)}</text>`).join('');
+  const labels = points.map(p=>{
+    const lx = p.x.toFixed(1), ly = (h-padB+14).toFixed(1);
+    return `<text x="${lx}" y="${ly}" font-size="10" text-anchor="end" fill="#5a5648" transform="rotate(-40 ${lx} ${ly})">${p.d.label}</text>`;
+  }).join('');
+  const axisLine = `<line x1="${padL}" y1="${padT+chartH}" x2="${w-padR}" y2="${padT+chartH}" stroke="#d8d2bd" stroke-width="1"/>`;
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">
+    <path d="${areaD}" fill="#f6e6d6" opacity="0.6"/>
+    ${axisLine}<path d="${pathD}" fill="none" stroke="#b5651d" stroke-width="2.5"/>${dots}${labels}
+  </svg>`;
+}
+function renderPieChart(ipc, epi){
+  const total = ipc+epi;
+  if(total===0) return '<div class="empty">কোনো ডেটা নেই — মাসিক রিপোর্টে IPC/EPI কর্মসূচি বসালে এখানে চার্ট দেখা যাবে</div>';
+  const cx=110, cy=110, r=95;
+  function polarToCartesian(angleDeg){
+    const rad = (angleDeg-90) * Math.PI/180;
+    return { x: cx + r*Math.cos(rad), y: cy + r*Math.sin(rad) };
+  }
+  function slicePath(startA, endA){
+    if(endA-startA >= 359.999) return `M ${cx} ${cy-r} A ${r} ${r} 0 1 1 ${cx-0.01} ${cy-r} Z`;
+    const s = polarToCartesian(startA), e = polarToCartesian(endA);
+    const largeArc = endA-startA > 180 ? 1 : 0;
+    return `M ${cx} ${cy} L ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)} Z`;
+  }
+  const ipcAngle = (ipc/total)*360;
+  const ipcPct = Math.round((ipc/total)*100), epiPct = 100-ipcPct;
+  return `
+  <div style="display:flex;align-items:center;gap:28px;flex-wrap:wrap;justify-content:center;">
+    <svg viewBox="0 0 220 220" style="width:200px;height:200px;flex:0 0 auto;" xmlns="http://www.w3.org/2000/svg">
+      <path d="${slicePath(0, ipcAngle)}" style="fill:var(--green-mid)"/>
+      <path d="${slicePath(ipcAngle, 360)}" fill="#b5651d"/>
+      <circle cx="110" cy="110" r="52" fill="#fff"/>
+      <text x="110" y="104" text-anchor="middle" font-size="12" fill="#1b2430" font-weight="600">সর্বমোট</text>
+      <text x="110" y="125" text-anchor="middle" font-size="17" fill="#1b2430" font-weight="800">${bnNum(total)}</text>
+    </svg>
+    <div style="font-size:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="width:14px;height:14px;background:var(--green-mid);border-radius:3px;display:inline-block;"></span>
+        <span>IPC — <strong>${bnNum(ipc)}</strong> (${bnNum(ipcPct)}%)</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:14px;height:14px;background:#b5651d;border-radius:3px;display:inline-block;"></span>
+        <span>EPI — <strong>${bnNum(epi)}</strong> (${bnNum(epiPct)}%)</span>
+      </div>
+    </div>
+  </div>`;
+}
+function dashboardTabHTML(){
+  const monthly = monthlyProgramStats();
+  const houseMonthly = monthlyHouseStats();
+  const totalIPC = monthly.reduce((s,d)=>s+d.ipc, 0);
+  const totalEPI = monthly.reduce((s,d)=>s+d.epi, 0);
+  const houseSums = allRowsFlat().reduce((a,r)=>{a.newC+=r.newC;a.cancelC+=r.cancelC;a.total+=r.total;return a;}, {newC:0,cancelC:0,total:0});
+  const programSeries = [
+    {key:'count', label:'সর্বমোট কর্মসূচি', color:'var(--green-mid)'},
+    {key:'ipc', label:'IPC', color:'#b5651d'},
+    {key:'epi', label:'EPI', color:'#a13d3d'}
+  ];
+  const houseSeries = [
+    {key:'total', label:'সর্বমোট পরিদর্শিত বাড়ি', color:'var(--green-mid)'},
+    {key:'ipc', label:'IPC-এর আওতায়', color:'#b5651d'},
+    {key:'epi', label:'EPI-এর আওতায়', color:'#a13d3d'}
+  ];
+  return `
+  <div class="card" style="background:var(--green-soft);border:1px solid var(--green-deep);">
+    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--green-deep);">
+      <div><strong>IPC</strong> = Interpersonal Communication (আন্তঃব্যক্তিক যোগাযোগ)</div>
+      <div><strong>EPI</strong> = Expanded Programme on Immunization (বর্ধিত টিকাদান কর্মসূচি)</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>মাস অনুযায়ী কর্মসূচি (বার চার্ট)</h2>
+    ${renderGroupedBarChart(monthly, programSeries)}
+  </div>
+  <div class="card">
+    <h2>মাস অনুযায়ী পরিদর্শিত বাড়ি (বার চার্ট)</h2>
+    ${renderGroupedBarChart(houseMonthly, houseSeries)}
+  </div>
+  <div class="card">
+    <h2>বছরের প্রবণতা (লাইন চার্ট)</h2>
+    ${renderLineChart(monthly)}
+  </div>
+  <div class="card">
+    <h2>IPC বনাম EPI অনুপাত</h2>
+    ${renderPieChart(totalIPC, totalEPI)}
+  </div>
+  <div class="card">
+    <h2>পরিদর্শিত বাড়ির সর্বমোট হিসাব (সব মাস মিলিয়ে)</h2>
+    <div class="grid">
+      <div class="card" style="background:var(--green-soft);text-align:center;padding:14px;">
+        <div class="hint">নতুন</div><div style="font-size:22px;font-weight:800;color:var(--green-deep);">${bnNum(houseSums.newC)}</div>
+      </div>
+      <div class="card" style="background:var(--red-soft);text-align:center;padding:14px;">
+        <div class="hint">বিলুপ্ত</div><div style="font-size:22px;font-weight:800;color:var(--red);">${bnNum(houseSums.cancelC)}</div>
+      </div>
+      <div class="card" style="background:var(--gold-soft);text-align:center;padding:14px;">
+        <div class="hint">মোট পরিদর্শিত বাড়ি</div><div style="font-size:22px;font-weight:800;color:var(--gold);">${bnNum(houseSums.total)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+function grandTotalHTML(){
+  const from = window._gtFrom || '';
+  const to = window._gtTo || '';
+  const rows = allRowsFlat().filter(r=>{
+    if(from && r.date < from) return false;
+    if(to && r.date > to) return false;
+    return true;
+  });
+  const sums = rows.reduce((a,r)=>{a.newC+=r.newC;a.cancelC+=r.cancelC;a.total+=r.total;return a;}, {newC:0,cancelC:0,total:0});
+  const programRows = allProgramDaysFlat().filter(r=>{
+    if(from && r.date < from) return false;
+    if(to && r.date > to) return false;
+    return true;
+  });
+  const totalKormasuchi = programRows.length;
+  const totalIPC = programRows.filter(r=>r.purpose==='IPC').length;
+  const totalEPI = programRows.filter(r=>r.purpose==='EPI').length;
+  return `
+  <div class="card">
+    <h2>বার্ষিক রিপোর্টের জন্য সর্বমোট সংখ্যা খুঁজে নিন</h2>
+    <div class="search-box">
+      <div class="field" style="max-width:200px;"><label>তারিখ হইতে</label><input type="date" id="gtFromInput" value="${from}" onchange="window._gtFrom=this.value; renderTabPreservingFocus();"></div>
+      <div class="field" style="max-width:200px;"><label>তারিখ পর্যন্ত</label><input type="date" id="gtToInput" value="${to}" onchange="window._gtTo=this.value; renderTabPreservingFocus();"></div>
+    </div>
+    <p class="hint" style="margin-top:-4px;margin-bottom:10px;">${(from||to) ? 'নির্বাচিত তারিখের মধ্যেকার হিসাব দেখানো হচ্ছে' : 'কোনো তারিখ সিলেক্ট করা না থাকলে সর্বমোট (গ্র্যান্ড টোটাল) দেখানো হচ্ছে'}</p>
+    <div class="grid">
+      <div class="card" style="background:var(--green-soft);text-align:center;padding:14px;">
+        <div class="hint">সর্বমোট কর্মসূচি</div><div style="font-size:22px;font-weight:800;color:var(--green-deep);">${bnNum(totalKormasuchi)}</div>
+      </div>
+      <div class="card" style="background:var(--green-soft);text-align:center;padding:14px;">
+        <div class="hint">কর্মসূচি IPC-এর টোটাল</div><div style="font-size:22px;font-weight:800;color:var(--green-deep);">${bnNum(totalIPC)}</div>
+      </div>
+      <div class="card" style="background:var(--green-soft);text-align:center;padding:14px;">
+        <div class="hint">কর্মসূচি EPI-এর টোটাল</div><div style="font-size:22px;font-weight:800;color:var(--green-deep);">${bnNum(totalEPI)}</div>
+      </div>
+    </div>
+    <div class="grid" style="margin-top:12px;">
+      <div class="card" style="background:var(--gold-soft);text-align:center;padding:14px;">
+        <div class="hint">নতুন</div><div style="font-size:22px;font-weight:800;color:var(--gold);">${bnNum(sums.newC)}</div>
+      </div>
+      <div class="card" style="background:var(--red-soft);text-align:center;padding:14px;">
+        <div class="hint">বিলুপ্ত</div><div style="font-size:22px;font-weight:800;color:var(--red);">${bnNum(sums.cancelC)}</div>
+      </div>
+      <div class="card" style="background:var(--gold-soft);text-align:center;padding:14px;">
+        <div class="hint">মোট পরিদর্শিত বাড়ি</div><div style="font-size:22px;font-weight:800;color:var(--gold);">${bnNum(sums.total)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+
+function exportBackup(){
+  const dataStr = JSON.stringify(STATE, null, 2);
+  const blob = new Blob([dataStr], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = isoDate(new Date());
+  a.href = url;
+  a.download = `monthly-report-backup-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('ব্যাকআপ ফাইল ডাউনলোড হয়েছে');
+}
+function triggerImport(){ document.getElementById('importFileInput').click(); }
+function handleImportFile(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try{
+      const imported = JSON.parse(e.target.result);
+      if(!imported.worker || !imported.centerRows){ toast('ফাইলটি সঠিক ব্যাকআপ ফরম্যাটে নেই'); return; }
+      if(!confirm('বর্তমান সব ডেটা মুছে ব্যাকআপ ফাইলের ডেটা বসানো হবে। নিশ্চিত?')) return;
+      STATE = migrateState(imported);
+      await saveState();
+      toast('ব্যাকআপ থেকে ডেটা ফিরিয়ে আনা হয়েছে ✔');
+      render();
+    }catch(err){
+      toast('ফাইলটি পড়া যায়নি — সঠিক ব্যাকআপ ফাইল কিনা দেখুন');
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function handleHistorySearch(v){
+  window._searchTerm = v;
+  renderTab();
+  const el = document.getElementById('historySearchInput');
+  if(el){
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }
+}
+function monthMatchesSearch(ym, rawTerm){
+  const term = (rawTerm||'').trim();
+  if(!term) return true;
+  const [y,m] = ym.split('-').map(Number);
+  const yyyy = String(y), mm = String(m).padStart(2,'0');
+  const bnLabel = BN_MONTHS[m-1] + ' ' + bnNum(y);
+  const enDigitLabel = BN_MONTHS[m-1] + ' ' + yyyy;
+  if(bnLabel.includes(term) || enDigitLabel.includes(term)) return true;
+  const normTerm = term.replace(/[০-৯]/g, d=>'০১২৩৪৫৬৭৮৯'.indexOf(d));
+  if(/^[0-9\-\s]+$/.test(normTerm)){
+    const digits = normTerm.replace(/[^0-9]/g,'');
+    if(digits){
+      const candidates = [`${yyyy}${mm}`, `${mm}${yyyy}`, yyyy, mm];
+      if(candidates.some(c=>c.includes(digits))) return true;
+    }
+  }
+  return false;
+}
+function historyTabHTML(){
+  const isViewer = CURRENT_ROLE==='viewer';
+  const months = Object.keys(STATE.entries).sort().reverse();
+  let searchTerm = window._searchTerm || '';
+  let filtered = months.filter(ym=> monthMatchesSearch(ym, searchTerm));
+
+  const listHTML = filtered.length ? filtered.map(ym=>{
+    const [y,m]=ym.split('-').map(Number);
+    const label = BN_MONTHS[m-1]+' '+bnNum(y);
+    const submitted = STATE.submitted[ym];
+    const entry = STATE.entries[ym];
+    const filledDays = entry.rows.filter(r=>r.code && r.code!=='----').length;
+    return `
+    <div class="history-item">
+      <div>
+        <strong>${label}</strong>
+        <div class="muted" style="font-size:12px;">${bnNum(filledDays)} দিন পূরণ করা হয়েছে ${submitted?' • জমা: '+new Date(submitted).toLocaleDateString('bn-BD'):''}</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline" onclick="openMonth('${ym}')">দেখুন</button>
+        ${isViewer?'':`<button class="btn btn-danger" onclick="deleteMonthReport('${ym}')">🗑 ডিলিট</button>`}
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty">কোনো মাসের রিপোর্ট এখনো তৈরি হয়নি</div>`;
+
+  return `
+  <div class="card">
+    <div class="top-bar">
+      <h2 style="border:none;margin:0;">ইতিহাস ও সার্চ</h2>
+      ${isViewer?'':`
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-gold btn-sm" onclick="exportBackup()">⬇ ব্যাকআপ ডাউনলোড</button>
+        <button class="btn btn-outline btn-sm" onclick="triggerImport()">⬆ ব্যাকআপ থেকে ফিরিয়ে আনুন</button>
+        <input type="file" id="importFileInput" accept="application/json" style="display:none;" onchange="handleImportFile(this)">
+      </div>`}
+    </div>
+    ${isViewer?'':`
+    <p class="hint" style="margin-top:-8px;margin-bottom:12px;">
+      অন্য ফোন বা কম্পিউটারে সব ডেটা নিয়ে যেতে চাইলে: এখান থেকে "ব্যাকআপ ডাউনলোড" করে ফাইলটা Google Drive/ইমেইলে রাখুন, তারপর অন্য ডিভাইসে এই অ্যাপ খুলে "ব্যাকআপ থেকে ফিরিয়ে আনুন" চাপুন।
+    </p>`}
+    <div class="search-box">
+      <input type="text" id="historySearchInput" style="max-width:280px;width:100%;" placeholder="মাস খুঁজুন..." value="${esc(searchTerm)}" oninput="handleHistorySearch(this.value)">
+    </div>
+    <p class="hint" style="margin-top:-8px;margin-bottom:12px;">
+      যেকোনো একভাবে লিখে খুঁজতে পারবেন — বাংলা মাসের নাম+বছর (<b>অক্টোবর ২০২৬</b>), হাইফেন দিয়ে মাস-বছর (<b>10-2026</b>), অথবা টানা সংখ্যায় (<b>102026</b>)
+    </p>
+    <div class="history-list">${listHTML}</div>
+  </div>
+  ${grandTotalHTML()}`;
+}
+function openMonth(ym){
+  CURRENT_MONTH=ym;
+  ACTIVE_TAB='entry';
+  VIEWING_FROM_HISTORY = true;
+  render();
+}
+function recalcDefaultMonthFromHistory(){
+  const submittedMonths = Object.keys(STATE.submitted).sort();
+  STATE.currentMonth = submittedMonths.length
+    ? nextMonthStr(submittedMonths[submittedMonths.length-1])
+    : isoDate(new Date()).slice(0,7);
+}
+async function deleteMonthReport(ym){
+  const [y,m] = ym.split('-').map(Number);
+  const label = BN_MONTHS[m-1]+' '+bnNum(y);
+  if(!confirm(`${label} মাসের পুরো রিপোর্ট স্থায়ীভাবে মুছে ফেলা হবে। আপনি কি নিশ্চিত?`)) return;
+  delete STATE.entries[ym];
+  delete STATE.submitted[ym];
+  recalcDefaultMonthFromHistory();
+  const ok = await saveState();
+  renderTab();
+  toast(ok ? `${label} মাসের রিপোর্ট মুছে ফেলা হয়েছে` : '⚠ মুছতে সমস্যা হয়েছে, আবার চেষ্টা করুন');
+}
+
+document.addEventListener('click', function(e){
+  if(e.target.closest('tbody tr')) return;
+  document.querySelectorAll('tbody tr.active-row').forEach(tr=>tr.classList.remove('active-row'));
+}, true);
+
+(async function init(){
+  STATE = await loadState();
+  CURRENT_MONTH = STATE.currentMonth || isoDate(new Date()).slice(0,7);
+  render();
+  initFirebase();
+})();
+
+</script>
+</body>
+</html>
