@@ -388,6 +388,9 @@
   .picker-option:hover{background:var(--green-soft);}
   .picker-option.selected{background:var(--accent-gradient);color:#fff;font-weight:600;}
   .picker-empty{padding:16px;text-align:center;color:#8a8471;font-size:12.5px;}
+  /* ছুটির তালিকায় নতুন/ডুপ্লিকেট সারি কয়েক সেকেন্ড হলুদ হয়ে থাকে, যাতে সহজে খুঁজে পাওয়া যায় */
+  .hl-row td{background:#fff3b0!important;}
+  .hcopy-panel{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--green-soft);border:1px solid var(--paper-line);border-radius:10px;padding:12px 14px;margin-bottom:14px;}
 </style>
 </head>
 <body>
@@ -480,7 +483,7 @@ function defaultState(){
   return {
     version: DATA_VERSION,
     worker:{
-      name:'মোঃ শিমুল মিয়া', designation:'স্বাস্থ্য সহকারী', mobile:'০১৮২১২৯৯৯৯৩',
+      name:'মোঃ শিমুল মিয়া', designation:'স্বাস্থ্য সহকারী', mobile:'০১৮২১২৯৯৯৯৯৩',
       upazila:'আড়াইহাজার', district:'নারায়ণগঞ্জ', union:'সদাসদী', wardNo:'০১', signatureImage:null
     },
     centerRows: defaultCenterRows(),
@@ -1750,14 +1753,63 @@ function deleteCenter(id){
   saveState(); renderTab();
 }
 
+/* ================= ছুটির তালিকা ================= */
+let HOLIDAY_YEAR = null;        // null = স্বয়ংক্রিয় (চলতি বছর থাকলে সেটা, নাহলে "সব")
+let HOLIDAY_HL_ID = null;       // যে সারিটা সদ্য যোগ/ডুপ্লিকেট হয়েছে (হলুদ হাইলাইট)
+let HOLIDAY_DATE_DIRTY = false; // তারিখ বদলানো হয়েছে কিন্তু সারি এখনো নতুন করে সাজানো হয়নি
+
+function isLeapYear(y){ return (y%4===0 && y%100!==0) || y%400===0; }
+function holidayYears(){
+  const set = new Set();
+  STATE.holidays.forEach(h=>{ if(h.date) set.add(h.date.slice(0,4)); });
+  return [...set].sort();
+}
+function currentHolidayYear(){
+  if(HOLIDAY_YEAR) return HOLIDAY_YEAR;
+  const cy = String(new Date().getFullYear());
+  return holidayYears().includes(cy) ? cy : 'all';
+}
+function setHolidayYear(v){ HOLIDAY_YEAR = v; renderTab(); }
+
+function focusHolidayRow(id, field){
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const row = document.getElementById('holiday-row-'+id);
+    const inp = document.getElementById('holiday-'+id+'-'+field);
+    if(row) row.scrollIntoView({block:'center', behavior:'smooth'});
+    if(inp) inp.focus({preventScroll:true});
+    setTimeout(()=>{
+      if(HOLIDAY_HL_ID===id) HOLIDAY_HL_ID = null;
+      const r = document.getElementById('holiday-row-'+id);
+      if(r) r.classList.remove('hl-row');
+    }, 3500);
+  }));
+}
+
 function holidaysTabHTML(){
-  const sorted = [...STATE.holidays].sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+  const yr = currentHolidayYear();
+  const years = holidayYears();
+  if(yr!=='all' && !years.includes(yr)){ years.push(yr); years.sort(); }
+
+  const sorted = STATE.holidays
+    .filter(h=> yr==='all' || (h.date||'').slice(0,4)===yr)
+    .sort((a,b)=> (a.date||'').localeCompare(b.date||''));   // একই তারিখে আগের ক্রম বজায় থাকে
+
   const rows = sorted.map(h=>`
-    <tr>
-      <td><input type="date" id="holiday-${h.id}-date" value="${esc(h.date)}" onchange="updateHoliday('${h.id}','date',this.value)" style="width:150px"></td>
+    <tr id="holiday-row-${h.id}" class="${HOLIDAY_HL_ID===h.id?'hl-row':''}">
+      <td><input type="date" id="holiday-${h.id}-date" value="${esc(h.date)}" onchange="updateHoliday('${h.id}','date',this.value)" onblur="holidayDateBlur('${h.id}')" style="width:150px"></td>
       <td><input type="text" id="holiday-${h.id}-name" value="${esc(h.name)}" placeholder="ছুটির নাম" oninput="updateHoliday('${h.id}','name',this.value)"></td>
-      <td><button class="btn btn-danger btn-sm" onclick="deleteHoliday('${h.id}')">✕</button></td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-outline btn-sm" onclick="duplicateHoliday('${h.id}')" title="এই সারির হুবহু কপি তৈরি করুন — তারপর তারিখ বদলে নিন">⧉ ডুপ্লিকেট</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteHoliday('${h.id}')">✕</button>
+      </td>
     </tr>`).join('');
+
+  const fromDefault = yr!=='all' ? yr : (years[years.length-1] || String(new Date().getFullYear()));
+  const toDefault = String(Number(fromDefault)+1);
+  const yearOpts = ['all', ...years].map(y=>
+    `<option value="${y}" ${y===yr?'selected':''}>${y==='all'?'সব বছর':bnNum(y)}</option>`).join('');
+  const fromOpts = years.map(y=>`<option value="${y}" ${y===fromDefault?'selected':''}>${bnNum(y)}</option>`).join('');
+
   return `
   <div class="card">
     <div class="top-bar">
@@ -1767,26 +1819,110 @@ function holidaysTabHTML(){
     <p class="hint" style="margin-top:-6px;margin-bottom:12px;">
       এখানে যোগ/পরিবর্তন/মুছে ফেলা যেকোনো ছুটি "Fill Remark" বাটন চাপলে মাসিক রিপোর্টে স্বয়ংক্রিয়ভাবে বসে যাবে। প্রতি বছরের সরকারি ছুটির তালিকা এখানে আপডেট করে রাখুন।
     </p>
+
+    <div class="hcopy-panel no-print">
+      <div style="font-weight:700;color:var(--green-deep);width:100%;">📋 পুরো বছরের ছুটি ডুপ্লিকেট করুন</div>
+      <div class="field" style="margin:0;"><label>যে বছর থেকে কপি</label>
+        <select id="hcopyFrom" style="min-width:110px;">${fromOpts || '<option value="">—</option>'}</select></div>
+      <div class="field" style="margin:0;"><label>যে বছরে বসবে</label>
+        <input type="number" id="hcopyTo" value="${toDefault}" min="2000" max="2100" style="width:110px;"></div>
+      <button class="btn btn-gold btn-sm" onclick="duplicateHolidayYear()">কপি করুন</button>
+      <div class="hint" style="width:100%;margin:0;">নাম সব একই থাকবে, শুধু বছর বদলাবে। কপির পর প্রতিটি তারিখ নিচে থেকে এডিট করে নিন (ঈদ ইত্যাদির তারিখ প্রতি বছর বদলায়)।</div>
+    </div>
+
+    <div class="search-box">
+      <div class="field" style="max-width:200px;margin:0;"><label>বছর অনুযায়ী দেখুন</label>
+        <select onchange="setHolidayYear(this.value)">${yearOpts}</select></div>
+      <div class="hint" style="align-self:flex-end;">মোট ${bnNum(sorted.length)} টি ছুটি দেখানো হচ্ছে</div>
+    </div>
+
     ${sorted.length?`
     <div style="overflow-x:auto;">
     <table class="setup-table">
       <thead><tr><th>তারিখ</th><th>ছুটির নাম</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    </div>` : `<div class="empty">কোনো ছুটি যোগ করা নেই</div>`}
+    </div>` : `<div class="empty">এই বছরে কোনো ছুটি যোগ করা নেই</div>`}
   </div>`;
 }
+
+/* তারিখ/নাম লেখার সময় আর প্রতিবার পুরো ট্যাব রিরেন্ডার হয় না (আগে বছরের অংশ টাইপ করার সময়
+   প্রতিটা অঙ্কে সারি সরে যেত)। সেভ সাথে সাথেই হয়; সারি নতুন করে সাজানো হয় তারিখের ঘর থেকে বেরিয়ে গেলে। */
 function updateHoliday(id,field,val){
   const h = STATE.holidays.find(x=>x.id===id);
   if(!h) return;
-  h[field]=val; saveState(); renderTabPreservingFocus();
+  h[field] = val;
+  if(field==='date') HOLIDAY_DATE_DIRTY = true;
+  saveState();
 }
+function holidayDateBlur(id){
+  setTimeout(()=>{
+    if(!HOLIDAY_DATE_DIRTY) return;
+    const a = document.activeElement;
+    if(a && a.tagName==='INPUT' && /^holiday-/.test(a.id||'')) return;   // অন্য ঘরে এডিট চলছে — পরে সাজানো হবে
+    HOLIDAY_DATE_DIRTY = false;
+    const h = STATE.holidays.find(x=>x.id===id);
+    if(!h) return;
+    const yr = currentHolidayYear();
+    if(yr!=='all' && h.date) HOLIDAY_YEAR = h.date.slice(0,4);   // সারিটা যেন বছরের ফিল্টারে হারিয়ে না যায়
+    HOLIDAY_HL_ID = id;
+    renderTab();
+    focusHolidayRow(id, 'name');
+  }, 250);
+}
+
 function addHoliday(){
+  const yr = currentHolidayYear();
+  const today = isoDate(new Date());
+  const date = (yr==='all' || today.slice(0,4)===yr) ? today : yr+'-01-01';
   const id = 'h'+(STATE.nextHolidayId++);
-  STATE.holidays.push({id, date:CURRENT_MONTH+'-01', name:''});
+  STATE.holidays.push({id, date, name:''});
+  HOLIDAY_HL_ID = id;
   saveState(); renderTab();
-  toast('নতুন ছুটি যোগ করা হয়েছে');
+  focusHolidayRow(id, 'name');
+  toast('নতুন ছুটির সারি যোগ হয়েছে (হলুদ সারিটি দেখুন) — তারিখ ও নাম লিখুন');
 }
+
+/* একটা সারির হুবহু কপি ঠিক নিচে বসে; তারিখের ঘরে কার্সর চলে যায়, তারিখ বদলে নিলেই হবে */
+function duplicateHoliday(id){
+  const idx = STATE.holidays.findIndex(h=>h.id===id);
+  if(idx<0) return;
+  const src = STATE.holidays[idx];
+  const nid = 'h'+(STATE.nextHolidayId++);
+  STATE.holidays.splice(idx+1, 0, {id:nid, date:src.date, name:src.name});
+  HOLIDAY_HL_ID = nid;
+  saveState(); renderTab();
+  focusHolidayRow(nid, 'date');
+  toast('সারিটি ডুপ্লিকেট হয়েছে — এখন নতুন সারির তারিখ বদলে নিন');
+}
+
+/* পুরো বছরের ছুটি অন্য বছরে কপি (নাম একই, শুধু বছর বদলায়) */
+function duplicateHolidayYear(){
+  const from = document.getElementById('hcopyFrom').value;
+  const to = String(document.getElementById('hcopyTo').value).trim();
+  if(!from){ toast('⚠ কপি করার মতো কোনো বছর নেই', 3500); return; }
+  if(!/^\d{4}$/.test(to)){ toast('⚠ টার্গেট বছর সঠিকভাবে লিখুন (যেমন 2028)', 3500); return; }
+  if(from===to){ toast('⚠ যে বছর থেকে কপি আর যে বছরে বসবে — দুটো একই হতে পারবে না', 4000); return; }
+  const src = STATE.holidays
+    .filter(h=>(h.date||'').slice(0,4)===from)
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!src.length){ toast('⚠ '+bnNum(from)+' সালে কোনো ছুটি নেই', 3500); return; }
+  if(!confirm(`${bnNum(from)} সালের ${bnNum(src.length)} টি ছুটি ${bnNum(to)} সালে কপি হবে।\nকপির পর প্রতিটি তারিখ আলাদাভাবে এডিট করতে পারবেন। চালিয়ে যাবেন?`)) return;
+
+  const existing = new Set(STATE.holidays.filter(h=>(h.date||'').slice(0,4)===to).map(h=>h.date+'|'+h.name));
+  let added = 0, skipped = 0;
+  src.forEach(h=>{
+    let d = to + h.date.slice(4);
+    if(d.endsWith('-02-29') && !isLeapYear(Number(to))) d = to+'-02-28';
+    if(existing.has(d+'|'+h.name)){ skipped++; return; }
+    STATE.holidays.push({id:'h'+(STATE.nextHolidayId++), date:d, name:h.name});
+    added++;
+  });
+  HOLIDAY_YEAR = to;
+  saveState(); renderTab();
+  toast(`${bnNum(to)} সালে ${bnNum(added)} টি ছুটি কপি হয়েছে${skipped?` (${bnNum(skipped)} টি আগে থেকেই ছিল, বাদ)`:''} — এখন তারিখগুলো এডিট করুন`, 6000);
+}
+
 function deleteHoliday(id){
   STATE.holidays = STATE.holidays.filter(h=>h.id!==id);
   saveState(); renderTab();
