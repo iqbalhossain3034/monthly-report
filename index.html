@@ -245,6 +245,10 @@
   .report-sheet.viewer-mode .print-only{display:inline!important;}
   td input[type="text"]{width:100%;border:1px solid #d8d2bd;border-radius:5px;padding:3px 6px;font:inherit;background:#fff;}
   @media print{
+    /* কিছু ব্রাউজার ডিফল্টভাবে "Background graphics" বন্ধ রেখে প্রিন্ট করে, ফলে off-day-এর ধূসর
+       রং ও হেডারের রং প্রিন্টে সাদা হয়ে যায়। নিচের লাইনটা ব্রাউজারকে বাধ্য করে পটভূমির রং সবসময়
+       প্রিন্ট করতে, ব্যবহারকারীর প্রিন্ট সেটিংস যাই থাকুক না কেন। */
+    *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
     @page{ size:A4 portrait; margin:6mm; }
     .tabs,.top-bar,.row-actions,.no-print,.letterhead,.footer-note{display:none!important;}
     body{background:#fff;font-size:9px;}
@@ -286,6 +290,11 @@
     /* কলাম-প্রস্থ এখন উপরের <colgroup>-এ নির্ধারিত (গ্রুপ-হেডারসহ সঠিকভাবে কাজ করার জন্য) */
     tbody tr{page-break-inside:avoid;}
     thead{display:table-header-group;}
+    /* ব্রাউজারের প্রিন্ট/"Save as PDF" ডিফল্টভাবে ব্যাকগ্রাউন্ড রং বাদ দেয় — তাই শুক্রবার/ছুটির দিনের ধূসর
+       সারি সাদা হয়ে যাচ্ছিল। নিচের নিয়ম ব্রাউজারকে রং প্রিন্ট করতে বাধ্য করে (Background graphics টিক দিতে হবে না) */
+    *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
+    tbody tr.off-day,tbody tr.off-day:hover,tbody tr.off-day.active-row,tbody tr.off-day:focus-within{background:#c7c7c2!important;}
+    tbody tr.off-day td,tbody tr.off-day:hover td{color:#3a3a36!important;}
   }
   /* উপরের @media print রুলের হুবহু প্রতিরূপ, কিন্তু ক্লাস হিসেবে —
      PDF এক্সপোর্টের সময় html2canvas এই ক্লাসটা ব্যবহার করে ঠিক প্রিন্টের মতোই এক-পাতার কম্প্যাক্ট লেআউট ক্যাপচার করে */
@@ -314,6 +323,7 @@
   .pdf-export-mode tbody tr:nth-child(even):not(.off-day){background:#fff!important;}
   .pdf-export-mode tbody tr.active-row,.pdf-export-mode tbody tr:focus-within,.pdf-export-mode tbody tr:hover{background:transparent!important;box-shadow:none!important;}
   .pdf-export-mode tbody tr.active-row td,.pdf-export-mode tbody tr:focus-within td,.pdf-export-mode tbody tr:hover td{color:inherit!important;font-weight:inherit!important;}
+  .pdf-export-mode tbody tr.off-day,.pdf-export-mode tbody tr.off-day:hover{background:#c7c7c2!important;}
   .pdf-export-mode .print-only{display:inline;white-space:normal;overflow-wrap:normal;word-break:keep-all;}
   .pdf-export-mode .muted{color:#000;font-weight:700;}
   .pdf-export-mode td input[type="text"]{border:none;}
